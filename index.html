@@ -7,12 +7,12 @@
 </head>
 <body>
 
+<div id="flash"></div>
+
 <div id="timer">60</div>
 
-<!-- CURRENT ITEM -->
 <div id="current-item"></div>
 
-<!-- BINS -->
 <div class="bins">
   <img src="bluebin.png" class="bin" data-type="paper">
   <img src="greenbin.png" class="bin" data-type="glass">
@@ -23,6 +23,12 @@
 <button id="startBtn">Start Game</button>
 
 <div id="score">Score: 0</div>
+
+<!-- END SCREEN -->
+<div id="endScreen" class="hidden">
+  <h1 id="endText"></h1>
+  <button id="restartBtn">Play Again</button>
+</div>
 
 <script src="script.js"></script>
 </body>
