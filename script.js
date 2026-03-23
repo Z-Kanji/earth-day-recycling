@@ -1,4 +1,4 @@
-const itemsData = [
+const itemsDataOriginal = [
   { img: "aerosol.png", type: "metal" },
   { img: "bag.png", type: "paper" },
   { img: "bottle.png", type: "plastic" },
@@ -13,22 +13,53 @@ const itemsData = [
   { img: "tin.png", type: "metal" }
 ];
 
-const itemsContainer = document.getElementById("items");
+let itemsData = [];
+let currentIndex = 0;
+let score = 0;
+let time = 60;
+let gameActive = false;
+let timerInterval;
+
+const currentItemContainer = document.getElementById("current-item");
 const bins = document.querySelectorAll(".bin");
 const timerDisplay = document.getElementById("timer");
 const scoreDisplay = document.getElementById("score");
+const startBtn = document.getElementById("startBtn");
 
-let score = 0;
-let time = 60;
+/* SHUFFLE FUNCTION */
+function shuffle(array) {
+  return array.sort(() => Math.random() - 0.5);
+}
 
-/* SHUFFLE */
-itemsData.sort(() => Math.random() - 0.5);
+/* START GAME */
+startBtn.addEventListener("click", () => {
+  itemsData = shuffle([...itemsDataOriginal]);
+  currentIndex = 0;
+  score = 0;
+  time = 60;
+  gameActive = true;
 
-/* CREATE ITEMS */
-itemsData.forEach(item => {
+  scoreDisplay.innerText = "Score: 0";
+  timerDisplay.innerText = time;
+
+  startBtn.disabled = true;
+
+  showNextItem();
+  startTimer();
+});
+
+/* SHOW ITEM */
+function showNextItem() {
+  currentItemContainer.innerHTML = "";
+
+  if (currentIndex >= itemsData.length) {
+    endGame();
+    return;
+  }
+
+  const item = itemsData[currentIndex];
   const img = document.createElement("img");
   img.src = item.img;
-  img.classList.add("item");
   img.draggable = true;
   img.dataset.type = item.type;
 
@@ -40,14 +71,16 @@ itemsData.forEach(item => {
     img.classList.remove("dragging");
   });
 
-  itemsContainer.appendChild(img);
-});
+  currentItemContainer.appendChild(img);
+}
 
-/* DRAG LOGIC */
+/* DROP LOGIC */
 bins.forEach(bin => {
   bin.addEventListener("dragover", e => e.preventDefault());
 
   bin.addEventListener("drop", () => {
+    if (!gameActive) return;
+
     const dragged = document.querySelector(".dragging");
     if (!dragged) return;
 
@@ -58,10 +91,11 @@ bins.forEach(bin => {
       score++;
       scoreDisplay.innerText = "Score: " + score;
 
-      dragged.classList.add("correct");
       bin.classList.add("correct");
+      setTimeout(() => bin.classList.remove("correct"), 200);
 
-      setTimeout(() => bin.classList.remove("correct"), 300);
+      currentIndex++;
+      showNextItem();
     } else {
       bin.classList.add("wrong");
       setTimeout(() => bin.classList.remove("wrong"), 300);
@@ -70,17 +104,25 @@ bins.forEach(bin => {
 });
 
 /* TIMER */
-const countdown = setInterval(() => {
-  time--;
-  timerDisplay.innerText = time;
+function startTimer() {
+  clearInterval(timerInterval);
 
-  if (time <= 0) {
-    clearInterval(countdown);
-    endGame();
-  }
-}, 1000);
+  timerInterval = setInterval(() => {
+    time--;
+    timerDisplay.innerText = time;
+
+    if (time <= 0) {
+      endGame();
+    }
+  }, 1000);
+}
 
 /* END GAME */
 function endGame() {
-  alert("Time's up! Final Score: " + score);
+  clearInterval(timerInterval);
+  gameActive = false;
+  currentItemContainer.innerHTML = "";
+  alert("Final Score: " + score);
+
+  startBtn.disabled = false;
 }
