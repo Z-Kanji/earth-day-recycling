@@ -1,15 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
-  <head>
-    <meta charset="UTF-8">
-    <title>Earth Day Recycling</title>
-    <link rel="stylesheet" href="./style.css">
-
-  </head>
-    
-  <body>
-  <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Recycling Game</title>
@@ -17,46 +7,23 @@
 </head>
 <body>
 
-<h1>Earth Day Recycling Game</h1>
 <div id="timer">60</div>
 
-<div class="game-container">
+<!-- CURRENT ITEM -->
+<div id="current-item"></div>
 
-  <!-- BINS -->
-  <div class="bins">
-    <div class="bin" data-type="paper">
-      <img src="bluebin.png">
-      <p>Paper</p>
-    </div>
-
-    <div class="bin" data-type="glass">
-      <img src="greenbin.png">
-      <p>Glass</p>
-    </div>
-
-    <div class="bin" data-type="metal">
-      <img src="redbin.png">
-      <p>Metal</p>
-    </div>
-
-    <div class="bin" data-type="plastic">
-      <img src="yellowbin.png">
-      <p>Plastic</p>
-    </div>
-  </div>
-
-  <!-- ITEMS -->
-  <div class="items" id="items"></div>
-
+<!-- BINS -->
+<div class="bins">
+  <img src="bluebin.png" class="bin" data-type="paper">
+  <img src="greenbin.png" class="bin" data-type="glass">
+  <img src="redbin.png" class="bin" data-type="metal">
+  <img src="yellowbin.png" class="bin" data-type="plastic">
 </div>
+
+<button id="startBtn">Start Game</button>
 
 <div id="score">Score: 0</div>
 
 <script src="script.js"></script>
 </body>
-</html>
-    <script  src="./script.js"></script>
-
-  </body>
-  
 </html>
