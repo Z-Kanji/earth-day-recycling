@@ -26,13 +26,21 @@ const timerDisplay = document.getElementById("timer");
 const scoreDisplay = document.getElementById("score");
 const startBtn = document.getElementById("startBtn");
 
-/* SHUFFLE FUNCTION */
+const flash = document.getElementById("flash");
+const endScreen = document.getElementById("endScreen");
+const endText = document.getElementById("endText");
+const restartBtn = document.getElementById("restartBtn");
+
+/* SHUFFLE */
 function shuffle(array) {
   return array.sort(() => Math.random() - 0.5);
 }
 
 /* START GAME */
-startBtn.addEventListener("click", () => {
+startBtn.addEventListener("click", startGame);
+restartBtn.addEventListener("click", startGame);
+
+function startGame() {
   itemsData = shuffle([...itemsDataOriginal]);
   currentIndex = 0;
   score = 0;
@@ -43,17 +51,18 @@ startBtn.addEventListener("click", () => {
   timerDisplay.innerText = time;
 
   startBtn.disabled = true;
+  endScreen.classList.add("hidden");
 
   showNextItem();
   startTimer();
-});
+}
 
 /* SHOW ITEM */
 function showNextItem() {
   currentItemContainer.innerHTML = "";
 
   if (currentIndex >= itemsData.length) {
-    endGame();
+    winGame();
     return;
   }
 
@@ -74,7 +83,15 @@ function showNextItem() {
   currentItemContainer.appendChild(img);
 }
 
-/* DROP LOGIC */
+/* FLASH RED */
+function flashRed() {
+  flash.style.opacity = "0.6";
+  setTimeout(() => {
+    flash.style.opacity = "0";
+  }, 1000);
+}
+
+/* DROP */
 bins.forEach(bin => {
   bin.addEventListener("dragover", e => e.preventDefault());
 
@@ -99,6 +116,7 @@ bins.forEach(bin => {
     } else {
       bin.classList.add("wrong");
       setTimeout(() => bin.classList.remove("wrong"), 300);
+      flashRed();
     }
   });
 });
@@ -112,17 +130,29 @@ function startTimer() {
     timerDisplay.innerText = time;
 
     if (time <= 0) {
-      endGame();
+      loseGame();
     }
   }, 1000);
 }
 
-/* END GAME */
-function endGame() {
+/* WIN */
+function winGame() {
   clearInterval(timerInterval);
   gameActive = false;
-  currentItemContainer.innerHTML = "";
-  alert("Final Score: " + score);
+
+  endText.innerText = "YOU WIN";
+  endScreen.classList.remove("hidden");
+
+  startBtn.disabled = false;
+}
+
+/* LOSE */
+function loseGame() {
+  clearInterval(timerInterval);
+  gameActive = false;
+
+  endText.innerText = "YOU LOSE";
+  endScreen.classList.remove("hidden");
 
   startBtn.disabled = false;
 }
