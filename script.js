@@ -31,9 +31,23 @@ const endScreen = document.getElementById("endScreen");
 const endText = document.getElementById("endText");
 const restartBtn = document.getElementById("restartBtn");
 
-/* SHUFFLE */
-function shuffle(array) {
-  return array.sort(() => Math.random() - 0.5);
+/* SMART SHUFFLE (no same back-to-back type) */
+function smartShuffle(array) {
+  let shuffled;
+  let valid = false;
+
+  while (!valid) {
+    shuffled = [...array].sort(() => Math.random() - 0.5);
+    valid = true;
+
+    for (let i = 1; i < shuffled.length; i++) {
+      if (shuffled[i].type === shuffled[i - 1].type) {
+        valid = false;
+        break;
+      }
+    }
+  }
+  return shuffled;
 }
 
 /* START GAME */
@@ -41,7 +55,7 @@ startBtn.addEventListener("click", startGame);
 restartBtn.addEventListener("click", startGame);
 
 function startGame() {
-  itemsData = shuffle([...itemsDataOriginal]);
+  itemsData = smartShuffle(itemsDataOriginal);
   currentIndex = 0;
   score = 0;
   time = 60;
@@ -83,7 +97,7 @@ function showNextItem() {
   currentItemContainer.appendChild(img);
 }
 
-/* FLASH RED */
+/* FLASH */
 function flashRed() {
   flash.style.opacity = "0.6";
   setTimeout(() => {
@@ -101,10 +115,7 @@ bins.forEach(bin => {
     const dragged = document.querySelector(".dragging");
     if (!dragged) return;
 
-    const itemType = dragged.dataset.type;
-    const binType = bin.dataset.type;
-
-    if (itemType === binType) {
+    if (dragged.dataset.type === bin.dataset.type) {
       score++;
       scoreDisplay.innerText = "Score: " + score;
 
