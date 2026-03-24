@@ -50,12 +50,13 @@ body {
   cursor: grab;
 }
 
-/* BINS */
+/* BINS (UPDATED SPACING ONLY) */
 .bins {
   display: flex;
   justify-content: center;
   gap: 30px;
-  margin-top: 80px;
+  margin-top: 120px;   /* moved bins further down */
+  margin-bottom: 0px;  /* removed dead space below bins */
 }
 
 .bin {
