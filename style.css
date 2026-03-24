@@ -4,12 +4,16 @@ body {
   font-family: Arial, sans-serif;
   text-align: center;
   color: white;
+  overflow: hidden;
 }
 
-/* SCALE ENTIRE GAME TO FIT SCREEN */
-#game-wrapper {
-  transform: scale(0.5);
-  transform-origin: top center;
+/* ADDED: scaling container */
+#scale-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 /* FLASH */
@@ -51,7 +55,7 @@ body {
   display: flex;
   justify-content: center;
   gap: 30px;
-  margin-top: 40px;
+  margin-top: 80px;
 }
 
 .bin {
