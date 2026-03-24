@@ -53,17 +53,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 #current-item img {
-  max-width: 60%;
-  max-height: 60%;
+  max-height: 50%;
+  max-width: 50%;
   width: auto;
   height: auto;
   object-fit: contain;
   cursor: grab;
-  transition: transform 0.6s ease, top 0.6s ease, left 0.6s ease;
   position: relative;
+  transition: transform 0.6s ease, top 0.6s ease, left 0.6s ease;
 }
 
 .bins {
@@ -73,13 +74,13 @@ body {
   justify-content: center;
   align-items: flex-end;
   gap: clamp(10px, 2vw, 28px);
-  margin: 0 0 2px 0;
+  margin: 10px 0 0 0;
   padding: 0;
 }
 
 .bin {
   width: auto;
-  height: clamp(120px, 18vh, 220px); /* bins bigger than items */
+  height: clamp(180px, 25vh, 280px);
   transform-origin: center center;
   cursor: pointer;
   transition: transform 0.2s;
