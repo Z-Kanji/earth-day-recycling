@@ -18,69 +18,65 @@ let currentIndex = 0;
 let score = 0;
 let time = 60;
 let gameActive = false;
-let timerInterval;
+let timerInterval = null;
 
 const currentItemContainer = document.getElementById("current-item");
 const bins = document.querySelectorAll(".bin");
 const timerDisplay = document.getElementById("timer");
 const scoreDisplay = document.getElementById("score");
 const startBtn = document.getElementById("startBtn");
-
 const flash = document.getElementById("flash");
 const endScreen = document.getElementById("endScreen");
 const endText = document.getElementById("endText");
 const restartBtn = document.getElementById("restartBtn");
 
-const gameWrapper = document.getElementById("game-wrapper");
+function shuffleNoBackToBackSameType(array) {
+  let shuffled = [];
+  let attempts = 0;
 
-function scaleGame() {
-  const scale = Math.min(
-    window.innerHeight / gameWrapper.offsetHeight,
-    window.innerWidth / gameWrapper.offsetWidth,
-    1
-  );
+  while (attempts < 1000) {
+    attempts++;
+    const candidate = [...array].sort(() => Math.random() - 0.5);
 
-  gameWrapper.style.transform = `scale(${scale})`;
-  gameWrapper.style.transformOrigin = "top center";
-}
-
-window.addEventListener("load", scaleGame);
-window.addEventListener("resize", scaleGame);
-
-function smartShuffle(array) {
-  let shuffled;
-  let valid = false;
-
-  while (!valid) {
-    shuffled = [...array].sort(() => Math.random() - 0.5);
-    valid = true;
-
-    for (let i = 1; i < shuffled.length; i++) {
-      if (shuffled[i].type === shuffled[i - 1].type) {
+    let valid = true;
+    for (let i = 1; i < candidate.length; i++) {
+      if (candidate[i].type === candidate[i - 1].type) {
         valid = false;
         break;
       }
     }
+
+    if (valid) {
+      shuffled = candidate;
+      break;
+    }
+  }
+
+  if (shuffled.length === 0) {
+    shuffled = [...array];
   }
 
   return shuffled;
 }
 
-startBtn.addEventListener("click", startGame);
-restartBtn.addEventListener("click", startGame);
+function hideEndScreen() {
+  endScreen.classList.add("hidden");
+  endText.innerText = "";
+}
 
 function startGame() {
-  itemsData = smartShuffle(itemsDataOriginal);
+  itemsData = shuffleNoBackToBackSameType(itemsDataOriginal);
   currentIndex = 0;
   score = 0;
   time = 60;
   gameActive = true;
 
   scoreDisplay.innerText = "Score: 0";
-  timerDisplay.innerText = time;
+  timerDisplay.innerText = "60";
 
   startBtn.disabled = true;
-  endScreen.style.display = "none";
+  hideEndScreen();
+  currentItemContainer.innerHTML = "";
 
   showNextItem();
   startTimer();
@@ -149,7 +145,7 @@ function startTimer() {
 
   timerInterval = setInterval(() => {
     time--;
-    timerDisplay.innerText = time;
+    timerDisplay.innerText = String(time);
 
     if (time <= 0) {
       loseGame();
@@ -160,19 +156,22 @@ function startTimer() {
 function winGame() {
   clearInterval(timerInterval);
   gameActive = false;
-
   endText.innerText = "YOU WIN";
-  endScreen.style.display = "flex";
-
+  endScreen.classList.remove("hidden");
   startBtn.disabled = false;
 }
 
 function loseGame() {
   clearInterval(timerInterval);
   gameActive = false;
-
   endText.innerText = "YOU LOSE";
-  endScreen.style.display = "flex";
-
+  endScreen.classList.remove("hidden");
   startBtn.disabled = false;
 }
+
+startBtn.addEventListener("click", startGame);
+restartBtn.addEventListener("click", startGame);
+
+window.addEventListener("load", () => {
+  hideEndScreen();
+});
