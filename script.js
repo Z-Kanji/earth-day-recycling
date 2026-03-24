@@ -114,6 +114,22 @@ function flashRed() {
   }, 1000);
 }
 
+// Animate item moving into bin
+function animateIntoBin(item, bin, callback) {
+  const binRect = bin.getBoundingClientRect();
+  const itemRect = item.getBoundingClientRect();
+
+  const dx = binRect.left + binRect.width/2 - (itemRect.left + itemRect.width/2);
+  const dy = binRect.top + binRect.height/2 - (itemRect.top + itemRect.height/2);
+
+  item.style.transition = "transform 0.6s ease";
+  item.style.transform = `translate(${dx}px, ${dy}px) scale(0.2)`;
+
+  setTimeout(() => {
+    callback();
+  }, 600);
+}
+
 bins.forEach(bin => {
   bin.addEventListener("dragover", e => e.preventDefault());
 
@@ -124,14 +140,17 @@ bins.forEach(bin => {
     if (!dragged) return;
 
     if (dragged.dataset.type === bin.dataset.type) {
-      score++;
-      scoreDisplay.innerText = "Score: " + score;
+      animateIntoBin(dragged, bin, () => {
+        score++;
+        scoreDisplay.innerText = "Score: " + score;
+
+        currentIndex++;
+        showNextItem();
+      });
 
       bin.classList.add("correct");
       setTimeout(() => bin.classList.remove("correct"), 200);
 
-      currentIndex++;
-      showNextItem();
     } else {
       bin.classList.add("wrong");
       setTimeout(() => bin.classList.remove("wrong"), 300);
