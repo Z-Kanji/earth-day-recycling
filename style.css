@@ -7,7 +7,7 @@ body {
   overflow: hidden;
 }
 
-/* ADDED: scaling container */
+/* SCALING CONTAINER */
 #scale-container {
   width: 100%;
   height: 100vh;
@@ -35,9 +35,9 @@ body {
   margin-top: 10px;
 }
 
-/* ITEM ZONE */
+/* ITEM ZONE (INCREASED HEIGHT = pushes bins down) */
 #item-zone {
-  height: 180px;
+  height: 260px; /* increased from 180px */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -50,13 +50,13 @@ body {
   cursor: grab;
 }
 
-/* BINS (UPDATED SPACING ONLY) */
+/* BINS */
 .bins {
   display: flex;
   justify-content: center;
   gap: 30px;
-  margin-top: 120px;   /* moved bins further down */
-  margin-bottom: 0px;  /* removed dead space below bins */
+  margin-top: 20px;  /* reduced so bins sit closer to item zone */
+  margin-bottom: 0px; /* removes space below */
 }
 
 .bin {
