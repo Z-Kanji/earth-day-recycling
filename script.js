@@ -31,7 +31,7 @@ const endScreen = document.getElementById("endScreen");
 const endText = document.getElementById("endText");
 const restartBtn = document.getElementById("restartBtn");
 
-/* SMART SHUFFLE (no back-to-back same type) */
+/* SMART SHUFFLE */
 function smartShuffle(array) {
   let shuffled;
   let valid = false;
@@ -65,7 +65,6 @@ function startGame() {
   timerDisplay.innerText = time;
 
   startBtn.disabled = true;
-
   endScreen.style.display = "none";
 
   showNextItem();
