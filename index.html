@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recycling Game</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -9,30 +10,26 @@
 
 <div id="flash"></div>
 
-<div id="scale-container">
-  <div id="game-wrapper">
+<div id="game-shell">
+  <div id="timer">60</div>
 
-    <div id="timer">60</div>
-
-    <div id="item-zone">
-      <div id="current-item"></div>
-    </div>
-
-    <div class="bins">
-      <img src="bluebin.png" class="bin" data-type="paper">
-      <img src="greenbin.png" class="bin" data-type="glass">
-      <img src="redbin.png" class="bin" data-type="metal">
-      <img src="yellowbin.png" class="bin" data-type="plastic">
-    </div>
-
-    <button id="startBtn">Start Game</button>
-
-    <div id="score">Score: 0</div>
-
+  <div id="item-zone">
+    <div id="current-item"></div>
   </div>
+
+  <div class="bins">
+    <img src="bluebin.png" class="bin" data-type="paper" alt="Paper bin">
+    <img src="greenbin.png" class="bin" data-type="glass" alt="Glass bin">
+    <img src="redbin.png" class="bin" data-type="metal" alt="Metal bin">
+    <img src="yellowbin.png" class="bin" data-type="plastic" alt="Plastic bin">
+  </div>
+
+  <button id="startBtn">Start Game</button>
+
+  <div id="score">Score: 0</div>
 </div>
 
-<div id="endScreen" style="display: none;">
+<div id="endScreen" class="hidden">
   <h1 id="endText"></h1>
   <button id="restartBtn">Play Again</button>
 </div>
