@@ -31,7 +31,7 @@ const endScreen = document.getElementById("endScreen");
 const endText = document.getElementById("endText");
 const restartBtn = document.getElementById("restartBtn");
 
-/* SMART SHUFFLE (no same back-to-back type) */
+/* SMART SHUFFLE (no back-to-back same type) */
 function smartShuffle(array) {
   let shuffled;
   let valid = false;
@@ -65,7 +65,8 @@ function startGame() {
   timerDisplay.innerText = time;
 
   startBtn.disabled = true;
-  endScreen.classList.add("hidden");
+
+  endScreen.style.display = "none";
 
   showNextItem();
   startTimer();
@@ -152,7 +153,7 @@ function winGame() {
   gameActive = false;
 
   endText.innerText = "YOU WIN";
-  endScreen.classList.remove("hidden");
+  endScreen.style.display = "flex";
 
   startBtn.disabled = false;
 }
@@ -163,7 +164,7 @@ function loseGame() {
   gameActive = false;
 
   endText.innerText = "YOU LOSE";
-  endScreen.classList.remove("hidden");
+  endScreen.style.display = "flex";
 
   startBtn.disabled = false;
 }
