@@ -52,10 +52,7 @@ function shuffleNoBackToBackSameType(array) {
     }
   }
 
-  if (shuffled.length === 0) {
-    shuffled = [...array];
-  }
-
+  if (shuffled.length === 0) shuffled = [...array];
   return shuffled;
 }
 
@@ -95,11 +92,11 @@ function showNextItem() {
   img.src = item.img;
   img.draggable = true;
   img.dataset.type = item.type;
+  img.style.position = "relative";
 
   img.addEventListener("dragstart", () => {
     img.classList.add("dragging");
   });
-
   img.addEventListener("dragend", () => {
     img.classList.remove("dragging");
   });
@@ -109,23 +106,25 @@ function showNextItem() {
 
 function flashRed() {
   flash.style.opacity = "0.6";
-  setTimeout(() => {
-    flash.style.opacity = "0";
-  }, 1000);
+  setTimeout(() => { flash.style.opacity = "0"; }, 1000);
 }
 
-// Animate item moving into bin
 function animateIntoBin(item, bin, callback) {
-  const binRect = bin.getBoundingClientRect();
   const itemRect = item.getBoundingClientRect();
+  const binRect = bin.getBoundingClientRect();
 
   const dx = binRect.left + binRect.width/2 - (itemRect.left + itemRect.width/2);
   const dy = binRect.top + binRect.height/2 - (itemRect.top + itemRect.height/2);
 
+  item.style.position = "fixed";
+  item.style.left = itemRect.left + "px";
+  item.style.top = itemRect.top + "px";
+  item.style.zIndex = 1000;
   item.style.transition = "transform 0.6s ease";
   item.style.transform = `translate(${dx}px, ${dy}px) scale(0.2)`;
 
   setTimeout(() => {
+    item.remove();
     callback();
   }, 600);
 }
@@ -135,7 +134,6 @@ bins.forEach(bin => {
 
   bin.addEventListener("drop", () => {
     if (!gameActive) return;
-
     const dragged = document.querySelector(".dragging");
     if (!dragged) return;
 
@@ -143,7 +141,6 @@ bins.forEach(bin => {
       animateIntoBin(dragged, bin, () => {
         score++;
         scoreDisplay.innerText = "Score: " + score;
-
         currentIndex++;
         showNextItem();
       });
@@ -161,14 +158,10 @@ bins.forEach(bin => {
 
 function startTimer() {
   clearInterval(timerInterval);
-
   timerInterval = setInterval(() => {
     time--;
     timerDisplay.innerText = String(time);
-
-    if (time <= 0) {
-      loseGame();
-    }
+    if (time <= 0) loseGame();
   }, 1000);
 }
 
@@ -191,6 +184,4 @@ function loseGame() {
 startBtn.addEventListener("click", startGame);
 restartBtn.addEventListener("click", startGame);
 
-window.addEventListener("load", () => {
-  hideEndScreen();
-});
+window.addEventListener("load", () => { hideEndScreen(); });
