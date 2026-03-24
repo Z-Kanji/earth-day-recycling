@@ -63,8 +63,9 @@ body {
   height: auto;
   object-fit: contain;
   cursor: grab;
-  position: relative;
-  transition: transform 0.6s ease, top 0.6s ease, left 0.6s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .bins {
@@ -73,14 +74,14 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: clamp(10px, 2vw, 28px);
+  gap: clamp(30px, 6vw, 80px); /* scaled spacing */
   margin: 10px 0 0 0;
   padding: 0;
 }
 
 .bin {
   width: auto;
-  height: clamp(180px, 25vh, 280px);
+  height: clamp(540px, 75vh, 840px); /* 3x size */
   transform-origin: center center;
   cursor: pointer;
   transition: transform 0.2s;
