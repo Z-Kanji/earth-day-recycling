@@ -75,11 +75,7 @@ function startGame() {
 
 function showNextItem() {
   currentItemContainer.innerHTML = "";
-
-  if (currentIndex >= itemsData.length) {
-    winGame();
-    return;
-  }
+  if (currentIndex >= itemsData.length) { winGame(); return; }
 
   const item = itemsData[currentIndex];
   const img = document.createElement("img");
@@ -87,9 +83,7 @@ function showNextItem() {
   img.dataset.type = item.type;
   img.style.left = "0px";
   img.style.top = "0px";
-
   img.addEventListener("mousedown", startDrag);
-
   currentItemContainer.appendChild(img);
 }
 
@@ -102,6 +96,7 @@ function startDrag(e) {
 
   draggingItem.style.position = "fixed";
   draggingItem.style.zIndex = 1000;
+  draggingItem.style.transition = "none";
 
   window.addEventListener("mousemove", dragItem);
   window.addEventListener("mouseup", dropItem);
@@ -115,25 +110,21 @@ function dragItem(e) {
 
 function dropItem(e) {
   if (!draggingItem) return;
-
   let droppedInBin = false;
+
   bins.forEach(bin => {
     const binRect = bin.getBoundingClientRect();
     const itemRect = draggingItem.getBoundingClientRect();
-    const itemCenterX = itemRect.left + itemRect.width/2;
-    const itemCenterY = itemRect.top + itemRect.height/2;
+    const centerX = itemRect.left + itemRect.width / 2;
+    const centerY = itemRect.top + itemRect.height / 2;
 
-    if (
-      itemCenterX >= binRect.left &&
-      itemCenterX <= binRect.right &&
-      itemCenterY >= binRect.top &&
-      itemCenterY <= binRect.bottom
-    ) {
+    if (centerX >= binRect.left && centerX <= binRect.right &&
+        centerY >= binRect.top && centerY <= binRect.bottom) {
       droppedInBin = true;
 
       // Animate into bin
-      const dx = binRect.left + binRect.width/2 - itemCenterX;
-      const dy = binRect.top + binRect.height/2 - itemCenterY;
+      const dx = binRect.left + binRect.width/2 - centerX;
+      const dy = binRect.top + binRect.height/2 - centerY;
       draggingItem.style.transition = "transform 0.3s ease";
       draggingItem.style.transform = `translate(${dx}px, ${dy}px) scale(0.2)`;
 
@@ -156,7 +147,6 @@ function dropItem(e) {
   });
 
   if (!droppedInBin) {
-    // Return to center of item zone
     draggingItem.style.transition = "all 0.2s ease";
     draggingItem.style.left = "0px";
     draggingItem.style.top = "0px";
@@ -168,8 +158,8 @@ function dropItem(e) {
 }
 
 function flashRed() {
-  flash.style.opacity = "0.6";
-  setTimeout(() => { flash.style.opacity = "0"; }, 1000);
+  flash.style.opacity = 0.6;
+  setTimeout(() => flash.style.opacity = 0, 1000);
 }
 
 function startTimer() {
