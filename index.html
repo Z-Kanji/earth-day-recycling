@@ -9,29 +9,30 @@
 
 <div id="flash"></div>
 
-<!-- GAME WRAPPER (scales everything properly) -->
-<div id="game-wrapper">
+<!-- SCALE WRAPPER -->
+<div id="scale-container">
+  <div id="game-wrapper">
 
-  <div id="timer">60</div>
+    <div id="timer">60</div>
 
-  <div id="item-zone">
-    <div id="current-item"></div>
+    <div id="item-zone">
+      <div id="current-item"></div>
+    </div>
+
+    <div class="bins">
+      <img src="bluebin.png" class="bin" data-type="paper">
+      <img src="greenbin.png" class="bin" data-type="glass">
+      <img src="redbin.png" class="bin" data-type="metal">
+      <img src="yellowbin.png" class="bin" data-type="plastic">
+    </div>
+
+    <button id="startBtn">Start Game</button>
+
+    <div id="score">Score: 0</div>
+
   </div>
-
-  <div class="bins">
-    <img src="bluebin.png" class="bin" data-type="paper">
-    <img src="greenbin.png" class="bin" data-type="glass">
-    <img src="redbin.png" class="bin" data-type="metal">
-    <img src="yellowbin.png" class="bin" data-type="plastic">
-  </div>
-
-  <button id="startBtn">Start Game</button>
-
-  <div id="score">Score: 0</div>
-
 </div>
 
-<!-- END SCREEN -->
 <div id="endScreen" style="display: none;">
   <h1 id="endText"></h1>
   <button id="restartBtn">Play Again</button>
