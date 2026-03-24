@@ -33,9 +33,13 @@ const restartBtn = document.getElementById("restartBtn");
 
 const gameWrapper = document.getElementById("game-wrapper");
 
-/* SCALE GAME TO ALWAYS FIT HEIGHT */
 function scaleGame() {
-  const scale = window.innerHeight / gameWrapper.offsetHeight;
+  const scale = Math.min(
+    window.innerHeight / gameWrapper.offsetHeight,
+    window.innerWidth / gameWrapper.offsetWidth,
+    1
+  );
+
   gameWrapper.style.transform = `scale(${scale})`;
   gameWrapper.style.transformOrigin = "top center";
 }
@@ -43,7 +47,6 @@ function scaleGame() {
 window.addEventListener("load", scaleGame);
 window.addEventListener("resize", scaleGame);
 
-/* SMART SHUFFLE */
 function smartShuffle(array) {
   let shuffled;
   let valid = false;
@@ -59,10 +62,10 @@ function smartShuffle(array) {
       }
     }
   }
+
   return shuffled;
 }
 
-/* START GAME */
 startBtn.addEventListener("click", startGame);
 restartBtn.addEventListener("click", startGame);
 
@@ -83,7 +86,6 @@ function startGame() {
   startTimer();
 }
 
-/* SHOW ITEM */
 function showNextItem() {
   currentItemContainer.innerHTML = "";
 
@@ -109,7 +111,6 @@ function showNextItem() {
   currentItemContainer.appendChild(img);
 }
 
-/* FLASH */
 function flashRed() {
   flash.style.opacity = "0.6";
   setTimeout(() => {
@@ -117,7 +118,6 @@ function flashRed() {
   }, 1000);
 }
 
-/* DROP */
 bins.forEach(bin => {
   bin.addEventListener("dragover", e => e.preventDefault());
 
@@ -144,7 +144,6 @@ bins.forEach(bin => {
   });
 });
 
-/* TIMER */
 function startTimer() {
   clearInterval(timerInterval);
 
@@ -158,7 +157,6 @@ function startTimer() {
   }, 1000);
 }
 
-/* WIN */
 function winGame() {
   clearInterval(timerInterval);
   gameActive = false;
@@ -169,7 +167,6 @@ function winGame() {
   startBtn.disabled = false;
 }
 
-/* LOSE */
 function loseGame() {
   clearInterval(timerInterval);
   gameActive = false;
