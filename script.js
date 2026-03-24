@@ -31,6 +31,18 @@ const endScreen = document.getElementById("endScreen");
 const endText = document.getElementById("endText");
 const restartBtn = document.getElementById("restartBtn");
 
+const gameWrapper = document.getElementById("game-wrapper");
+
+/* SCALE GAME TO ALWAYS FIT HEIGHT */
+function scaleGame() {
+  const scale = window.innerHeight / gameWrapper.offsetHeight;
+  gameWrapper.style.transform = `scale(${scale})`;
+  gameWrapper.style.transformOrigin = "top center";
+}
+
+window.addEventListener("load", scaleGame);
+window.addEventListener("resize", scaleGame);
+
 /* SMART SHUFFLE */
 function smartShuffle(array) {
   let shuffled;
