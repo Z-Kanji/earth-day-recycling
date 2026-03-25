@@ -7,7 +7,7 @@ body {
   overflow: hidden;
 }
 
-/* ADDITION: Prevent native image drag */
+/* prevent native image drag */
 img {
   user-select: none;
   -webkit-user-drag: none;
@@ -61,15 +61,16 @@ img {
 }
 
 #current-item img {
-  max-height: 50%;
-  max-width: 50%;
+  max-height: 100%;  /* doubled size */
+  max-width: 100%;   /* doubled size */
   width: auto;
   height: auto;
   object-fit: contain;
   cursor: grab;
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 50%;          /* centered vertically */
+  left: 50%;         /* centered horizontally */
+  transform: translate(-50%, -50%); /* center transform */
 }
 
 .bins {
@@ -78,7 +79,7 @@ img {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: 60px; /* scaled spacing for larger bins */
+  gap: 60px; /* spacing for larger bins */
   margin: 10px 0 0 0;
   padding: 0;
 }
