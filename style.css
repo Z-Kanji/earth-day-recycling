@@ -7,6 +7,12 @@ body {
   overflow: hidden;
 }
 
+/* ADDITION: Prevent native image drag */
+img {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 #game-shell {
   height: 100vh;
   width: 100%;
