@@ -66,8 +66,15 @@ function showNextItem() {
   const img = document.createElement("img");
   img.src = item.img;
   img.dataset.type = item.type;
-  img.style.left = "0px";
-  img.style.top = "0px";
+
+  // CENTER ITEM
+  img.onload = () => {
+    const containerRect = currentItemContainer.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+
+    img.style.left = (containerRect.width / 2 - imgRect.width / 2) + "px";
+    img.style.top = (containerRect.height / 2 - imgRect.height / 2) + "px";
+  };
 
   img.addEventListener("mousedown", startDrag);
 
@@ -78,7 +85,12 @@ function startDrag(e) {
   if (!gameActive) return;
 
   draggingItem = e.target;
+
   const rect = draggingItem.getBoundingClientRect();
+
+  // LOCK SIZE (prevents resize bug)
+  draggingItem.style.width = rect.width + "px";
+  draggingItem.style.height = rect.height + "px";
 
   offsetX = e.clientX - rect.left;
   offsetY = e.clientY - rect.top;
@@ -87,6 +99,7 @@ function startDrag(e) {
   draggingItem.style.left = rect.left + "px";
   draggingItem.style.top = rect.top + "px";
   draggingItem.style.zIndex = 1000;
+  draggingItem.style.transition = "none";
 
   window.addEventListener("mousemove", dragItem);
   window.addEventListener("mouseup", dropItem);
@@ -146,9 +159,9 @@ function dropItem() {
     }, 250);
 
   } else {
-    draggingItem.style.transition = "all 0.2s ease";
-    draggingItem.style.left = "0px";
-    draggingItem.style.top = "0px";
+    // RESET BACK TO CENTER
+    draggingItem.remove();
+    showNextItem();
   }
 
   window.removeEventListener("mousemove", dragItem);
@@ -166,9 +179,7 @@ function startTimer() {
     time--;
     timerDisplay.innerText = time;
 
-    if (time <= 0) {
-      loseGame();
-    }
+    if (time <= 0) loseGame();
   }, 1000);
 }
 
