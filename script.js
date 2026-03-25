@@ -82,7 +82,6 @@ function showItem() {
   img.src = item.img;
   img.dataset.type = item.type;
 
-  // item now appears directly in center
   img.style.top = "50%";
   img.style.left = "50%";
   img.style.transform = "translate(-50%, -50%)";
@@ -97,16 +96,22 @@ function startDrag(e) {
   draggingItem = e.target;
   const rect = draggingItem.getBoundingClientRect();
 
+  // 🔥 FIX: remove transform BEFORE calculating drag
+  draggingItem.style.transform = "none";
+
+  // preserve size exactly
   draggingItem.style.width = rect.width + "px";
   draggingItem.style.height = rect.height + "px";
 
-  offsetX = e.clientX - rect.left;
-  offsetY = e.clientY - rect.top;
-
+  // lock to exact screen position
   draggingItem.style.position = "fixed";
   draggingItem.style.left = rect.left + "px";
   draggingItem.style.top = rect.top + "px";
   draggingItem.style.zIndex = 1000;
+
+  // NOW calculate offset correctly
+  offsetX = e.clientX - rect.left;
+  offsetY = e.clientY - rect.top;
 
   window.addEventListener("mousemove", drag);
   window.addEventListener("mouseup", drop);
@@ -114,6 +119,7 @@ function startDrag(e) {
 
 function drag(e) {
   if (!draggingItem) return;
+
   draggingItem.style.left = (e.clientX - offsetX) + "px";
   draggingItem.style.top = (e.clientY - offsetY) + "px";
 }
@@ -146,11 +152,11 @@ function drop(e) {
   } else if (hitBin) {
     flashRed();
 
-    // reset to center
     draggingItem.style.position = "absolute";
     draggingItem.style.left = "50%";
     draggingItem.style.top = "50%";
     draggingItem.style.transform = "translate(-50%, -50%)";
+
   } else {
     draggingItem.style.position = "absolute";
     draggingItem.style.left = "50%";
