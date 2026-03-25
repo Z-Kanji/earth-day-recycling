@@ -82,12 +82,10 @@ function showItem() {
   img.src = item.img;
   img.dataset.type = item.type;
 
-  img.onload = () => {
-    const c = container.getBoundingClientRect();
-    const r = img.getBoundingClientRect();
-    img.style.left = (c.width / 2 - r.width / 2) + "px";
-    img.style.top = (c.height / 2 - r.height / 2) + "px";
-  };
+  // item now appears directly in center
+  img.style.top = "50%";
+  img.style.left = "50%";
+  img.style.transform = "translate(-50%, -50%)";
 
   img.addEventListener("mousedown", startDrag);
   container.appendChild(img);
@@ -99,7 +97,6 @@ function startDrag(e) {
   draggingItem = e.target;
   const rect = draggingItem.getBoundingClientRect();
 
-  // preserve size
   draggingItem.style.width = rect.width + "px";
   draggingItem.style.height = rect.height + "px";
 
@@ -117,7 +114,6 @@ function startDrag(e) {
 
 function drag(e) {
   if (!draggingItem) return;
-
   draggingItem.style.left = (e.clientX - offsetX) + "px";
   draggingItem.style.top = (e.clientY - offsetY) + "px";
 }
@@ -140,7 +136,6 @@ function drop(e) {
   });
 
   if (hitBin && hitBin.dataset.type === draggingItem.dataset.type) {
-    // CORRECT
     score++;
     scoreDisplay.innerText = "Score: " + score;
 
@@ -149,20 +144,18 @@ function drop(e) {
     showItem();
 
   } else if (hitBin) {
-    // WRONG
     flashRed();
 
     // reset to center
     draggingItem.style.position = "absolute";
     draggingItem.style.left = "50%";
-    draggingItem.style.top = "0px";
-    draggingItem.style.transform = "translateX(-50%)";
+    draggingItem.style.top = "50%";
+    draggingItem.style.transform = "translate(-50%, -50%)";
   } else {
-    // dropped outside, just reset
     draggingItem.style.position = "absolute";
     draggingItem.style.left = "50%";
-    draggingItem.style.top = "0px";
-    draggingItem.style.transform = "translateX(-50%)";
+    draggingItem.style.top = "50%";
+    draggingItem.style.transform = "translate(-50%, -50%)";
   }
 
   window.removeEventListener("mousemove", drag);
