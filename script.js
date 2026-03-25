@@ -99,6 +99,7 @@ function startDrag(e) {
   draggingItem = e.target;
   const rect = draggingItem.getBoundingClientRect();
 
+  // preserve size
   draggingItem.style.width = rect.width + "px";
   draggingItem.style.height = rect.height + "px";
 
@@ -147,11 +148,17 @@ function drop(e) {
     currentIndex++;
     showItem();
 
-  } else {
+  } else if (hitBin) {
     // WRONG
     flashRed();
 
     // reset to center
+    draggingItem.style.position = "absolute";
+    draggingItem.style.left = "50%";
+    draggingItem.style.top = "0px";
+    draggingItem.style.transform = "translateX(-50%)";
+  } else {
+    // dropped outside, just reset
     draggingItem.style.position = "absolute";
     draggingItem.style.left = "50%";
     draggingItem.style.top = "0px";
