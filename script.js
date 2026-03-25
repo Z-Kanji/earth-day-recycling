@@ -67,17 +67,14 @@ function showNextItem() {
   img.src = item.img;
   img.dataset.type = item.type;
 
-  // CENTER ITEM
   img.onload = () => {
-    const containerRect = currentItemContainer.getBoundingClientRect();
-    const imgRect = img.getBoundingClientRect();
-
-    img.style.left = (containerRect.width / 2 - imgRect.width / 2) + "px";
-    img.style.top = (containerRect.height / 2 - imgRect.height / 2) + "px";
+    const container = currentItemContainer.getBoundingClientRect();
+    const rect = img.getBoundingClientRect();
+    img.style.left = (container.width / 2 - rect.width / 2) + "px";
+    img.style.top = (container.height / 2 - rect.height / 2) + "px";
   };
 
   img.addEventListener("mousedown", startDrag);
-
   currentItemContainer.appendChild(img);
 }
 
@@ -85,10 +82,8 @@ function startDrag(e) {
   if (!gameActive) return;
 
   draggingItem = e.target;
-
   const rect = draggingItem.getBoundingClientRect();
 
-  // LOCK SIZE (prevents resize bug)
   draggingItem.style.width = rect.width + "px";
   draggingItem.style.height = rect.height + "px";
 
@@ -99,7 +94,6 @@ function startDrag(e) {
   draggingItem.style.left = rect.left + "px";
   draggingItem.style.top = rect.top + "px";
   draggingItem.style.zIndex = 1000;
-  draggingItem.style.transition = "none";
 
   window.addEventListener("mousemove", dragItem);
   window.addEventListener("mouseup", dropItem);
@@ -107,59 +101,44 @@ function startDrag(e) {
 
 function dragItem(e) {
   if (!draggingItem) return;
-
   draggingItem.style.left = (e.clientX - offsetX) + "px";
   draggingItem.style.top = (e.clientY - offsetY) + "px";
 }
 
-function dropItem() {
+function dropItem(e) {
   if (!draggingItem) return;
 
   let matchedBin = null;
 
-  bins.forEach(bin => {
-    const binRect = bin.getBoundingClientRect();
-    const itemRect = draggingItem.getBoundingClientRect();
+  // ✅ KEY FIX: use mouse position instead of item bounds
+  const mouseX = e.clientX;
+  const mouseY = e.clientY;
 
-    const centerX = itemRect.left + itemRect.width / 2;
-    const centerY = itemRect.top + itemRect.height / 2;
+  bins.forEach(bin => {
+    const rect = bin.getBoundingClientRect();
 
     if (
-      centerX >= binRect.left &&
-      centerX <= binRect.right &&
-      centerY >= binRect.top &&
-      centerY <= binRect.bottom
+      mouseX >= rect.left &&
+      mouseX <= rect.right &&
+      mouseY >= rect.top &&
+      mouseY <= rect.bottom
     ) {
       matchedBin = bin;
     }
   });
 
   if (matchedBin) {
-    const itemRect = draggingItem.getBoundingClientRect();
-    const binRect = matchedBin.getBoundingClientRect();
+    if (draggingItem.dataset.type === matchedBin.dataset.type) {
+      score++;
+      scoreDisplay.innerText = "Score: " + score;
+    } else {
+      flashRed();
+    }
 
-    const dx = binRect.left + binRect.width/2 - (itemRect.left + itemRect.width/2);
-    const dy = binRect.top + binRect.height/2 - (itemRect.top + itemRect.height/2);
-
-    draggingItem.style.transition = "transform 0.25s ease";
-    draggingItem.style.transform = `translate(${dx}px, ${dy}px) scale(0.2)`;
-
-    setTimeout(() => {
-      draggingItem.remove();
-
-      if (draggingItem.dataset.type === matchedBin.dataset.type) {
-        score++;
-        scoreDisplay.innerText = "Score: " + score;
-      } else {
-        flashRed();
-      }
-
-      currentIndex++;
-      showNextItem();
-    }, 250);
-
+    draggingItem.remove();
+    currentIndex++;
+    showNextItem();
   } else {
-    // RESET BACK TO CENTER
     draggingItem.remove();
     showNextItem();
   }
@@ -178,7 +157,6 @@ function startTimer() {
   timerInterval = setInterval(() => {
     time--;
     timerDisplay.innerText = time;
-
     if (time <= 0) loseGame();
   }, 1000);
 }
