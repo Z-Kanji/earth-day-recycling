@@ -18,7 +18,7 @@ let currentIndex = 0;
 let score = 0;
 let time = 60;
 let gameActive = false;
-let timerInterval = null;
+let timerInterval;
 
 const currentItemContainer = document.getElementById("current-item");
 const bins = document.querySelectorAll(".bin");
@@ -34,29 +34,12 @@ let draggingItem = null;
 let offsetX = 0;
 let offsetY = 0;
 
-function shuffleNoBackToBackSameType(array) {
-  let shuffled = [];
-  let attempts = 0;
-  while (attempts < 1000) {
-    attempts++;
-    const candidate = [...array].sort(() => Math.random() - 0.5);
-    let valid = true;
-    for (let i = 1; i < candidate.length; i++) {
-      if (candidate[i].type === candidate[i - 1].type) { valid = false; break; }
-    }
-    if (valid) { shuffled = candidate; break; }
-  }
-  if (shuffled.length === 0) shuffled = [...array];
-  return shuffled;
-}
-
-function hideEndScreen() {
-  endScreen.classList.add("hidden");
-  endText.innerText = "";
+function shuffle(array) {
+  return [...array].sort(() => Math.random() - 0.5);
 }
 
 function startGame() {
-  itemsData = shuffleNoBackToBackSameType(itemsDataOriginal);
+  itemsData = shuffle(itemsDataOriginal);
   currentIndex = 0;
   score = 0;
   time = 60;
@@ -64,10 +47,8 @@ function startGame() {
 
   scoreDisplay.innerText = "Score: 0";
   timerDisplay.innerText = "60";
-
   startBtn.disabled = true;
-  hideEndScreen();
-  currentItemContainer.innerHTML = "";
+  endScreen.classList.add("hidden");
 
   showNextItem();
   startTimer();
@@ -75,7 +56,11 @@ function startGame() {
 
 function showNextItem() {
   currentItemContainer.innerHTML = "";
-  if (currentIndex >= itemsData.length) { winGame(); return; }
+
+  if (currentIndex >= itemsData.length) {
+    winGame();
+    return;
+  }
 
   const item = itemsData[currentIndex];
   const img = document.createElement("img");
@@ -83,20 +68,25 @@ function showNextItem() {
   img.dataset.type = item.type;
   img.style.left = "0px";
   img.style.top = "0px";
+
   img.addEventListener("mousedown", startDrag);
+
   currentItemContainer.appendChild(img);
 }
 
 function startDrag(e) {
   if (!gameActive) return;
+
   draggingItem = e.target;
   const rect = draggingItem.getBoundingClientRect();
+
   offsetX = e.clientX - rect.left;
   offsetY = e.clientY - rect.top;
 
   draggingItem.style.position = "fixed";
+  draggingItem.style.left = rect.left + "px";
+  draggingItem.style.top = rect.top + "px";
   draggingItem.style.zIndex = 1000;
-  draggingItem.style.transition = "none";
 
   window.addEventListener("mousemove", dragItem);
   window.addEventListener("mouseup", dropItem);
@@ -104,49 +94,58 @@ function startDrag(e) {
 
 function dragItem(e) {
   if (!draggingItem) return;
-  draggingItem.style.left = e.clientX - offsetX + "px";
-  draggingItem.style.top = e.clientY - offsetY + "px";
+
+  draggingItem.style.left = (e.clientX - offsetX) + "px";
+  draggingItem.style.top = (e.clientY - offsetY) + "px";
 }
 
-function dropItem(e) {
+function dropItem() {
   if (!draggingItem) return;
-  let droppedInBin = false;
+
+  let matchedBin = null;
 
   bins.forEach(bin => {
     const binRect = bin.getBoundingClientRect();
     const itemRect = draggingItem.getBoundingClientRect();
+
     const centerX = itemRect.left + itemRect.width / 2;
     const centerY = itemRect.top + itemRect.height / 2;
 
-    if (centerX >= binRect.left && centerX <= binRect.right &&
-        centerY >= binRect.top && centerY <= binRect.bottom) {
-      droppedInBin = true;
-
-      // Animate into bin
-      const dx = binRect.left + binRect.width/2 - centerX;
-      const dy = binRect.top + binRect.height/2 - centerY;
-      draggingItem.style.transition = "transform 0.3s ease";
-      draggingItem.style.transform = `translate(${dx}px, ${dy}px) scale(0.2)`;
-
-      setTimeout(() => {
-        draggingItem.remove();
-        if (draggingItem.dataset.type === bin.dataset.type) {
-          score++;
-          scoreDisplay.innerText = "Score: " + score;
-          bin.classList.add("correct");
-          setTimeout(() => bin.classList.remove("correct"), 200);
-        } else {
-          flashRed();
-          bin.classList.add("wrong");
-          setTimeout(() => bin.classList.remove("wrong"), 300);
-        }
-        currentIndex++;
-        showNextItem();
-      }, 300);
+    if (
+      centerX >= binRect.left &&
+      centerX <= binRect.right &&
+      centerY >= binRect.top &&
+      centerY <= binRect.bottom
+    ) {
+      matchedBin = bin;
     }
   });
 
-  if (!droppedInBin) {
+  if (matchedBin) {
+    const itemRect = draggingItem.getBoundingClientRect();
+    const binRect = matchedBin.getBoundingClientRect();
+
+    const dx = binRect.left + binRect.width/2 - (itemRect.left + itemRect.width/2);
+    const dy = binRect.top + binRect.height/2 - (itemRect.top + itemRect.height/2);
+
+    draggingItem.style.transition = "transform 0.25s ease";
+    draggingItem.style.transform = `translate(${dx}px, ${dy}px) scale(0.2)`;
+
+    setTimeout(() => {
+      draggingItem.remove();
+
+      if (draggingItem.dataset.type === matchedBin.dataset.type) {
+        score++;
+        scoreDisplay.innerText = "Score: " + score;
+      } else {
+        flashRed();
+      }
+
+      currentIndex++;
+      showNextItem();
+    }, 250);
+
+  } else {
     draggingItem.style.transition = "all 0.2s ease";
     draggingItem.style.left = "0px";
     draggingItem.style.top = "0px";
@@ -163,11 +162,13 @@ function flashRed() {
 }
 
 function startTimer() {
-  clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     time--;
-    timerDisplay.innerText = String(time);
-    if (time <= 0) loseGame();
+    timerDisplay.innerText = time;
+
+    if (time <= 0) {
+      loseGame();
+    }
   }, 1000);
 }
 
@@ -189,4 +190,3 @@ function loseGame() {
 
 startBtn.addEventListener("click", startGame);
 restartBtn.addEventListener("click", startGame);
-window.addEventListener("load", () => hideEndScreen());
