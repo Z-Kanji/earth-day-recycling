@@ -20,7 +20,7 @@ let time = 60;
 let gameActive = false;
 let timerInterval;
 
-const currentItemContainer = document.getElementById("current-item");
+const container = document.getElementById("current-item");
 const bins = document.querySelectorAll(".bin");
 const timerDisplay = document.getElementById("timer");
 const scoreDisplay = document.getElementById("score");
@@ -34,12 +34,27 @@ let draggingItem = null;
 let offsetX = 0;
 let offsetY = 0;
 
-function shuffle(array) {
-  return [...array].sort(() => Math.random() - 0.5);
+// prevent same type back-to-back
+function shuffleNoRepeat(arr) {
+  let valid = false;
+  let result = [];
+
+  while (!valid) {
+    result = [...arr].sort(() => Math.random() - 0.5);
+    valid = true;
+
+    for (let i = 1; i < result.length; i++) {
+      if (result[i].type === result[i - 1].type) {
+        valid = false;
+        break;
+      }
+    }
+  }
+  return result;
 }
 
 function startGame() {
-  itemsData = shuffle(itemsDataOriginal);
+  itemsData = shuffleNoRepeat(itemsDataOriginal);
   currentIndex = 0;
   score = 0;
   time = 60;
@@ -50,12 +65,12 @@ function startGame() {
   startBtn.disabled = true;
   endScreen.classList.add("hidden");
 
-  showNextItem();
+  showItem();
   startTimer();
 }
 
-function showNextItem() {
-  currentItemContainer.innerHTML = "";
+function showItem() {
+  container.innerHTML = "";
 
   if (currentIndex >= itemsData.length) {
     winGame();
@@ -68,14 +83,14 @@ function showNextItem() {
   img.dataset.type = item.type;
 
   img.onload = () => {
-    const container = currentItemContainer.getBoundingClientRect();
-    const rect = img.getBoundingClientRect();
-    img.style.left = (container.width / 2 - rect.width / 2) + "px";
-    img.style.top = (container.height / 2 - rect.height / 2) + "px";
+    const c = container.getBoundingClientRect();
+    const r = img.getBoundingClientRect();
+    img.style.left = (c.width / 2 - r.width / 2) + "px";
+    img.style.top = (c.height / 2 - r.height / 2) + "px";
   };
 
   img.addEventListener("mousedown", startDrag);
-  currentItemContainer.appendChild(img);
+  container.appendChild(img);
 }
 
 function startDrag(e) {
@@ -95,56 +110,56 @@ function startDrag(e) {
   draggingItem.style.top = rect.top + "px";
   draggingItem.style.zIndex = 1000;
 
-  window.addEventListener("mousemove", dragItem);
-  window.addEventListener("mouseup", dropItem);
+  window.addEventListener("mousemove", drag);
+  window.addEventListener("mouseup", drop);
 }
 
-function dragItem(e) {
+function drag(e) {
   if (!draggingItem) return;
+
   draggingItem.style.left = (e.clientX - offsetX) + "px";
   draggingItem.style.top = (e.clientY - offsetY) + "px";
 }
 
-function dropItem(e) {
+function drop(e) {
   if (!draggingItem) return;
 
-  let matchedBin = null;
-
-  // ✅ KEY FIX: use mouse position instead of item bounds
-  const mouseX = e.clientX;
-  const mouseY = e.clientY;
+  let hitBin = null;
 
   bins.forEach(bin => {
     const rect = bin.getBoundingClientRect();
-
     if (
-      mouseX >= rect.left &&
-      mouseX <= rect.right &&
-      mouseY >= rect.top &&
-      mouseY <= rect.bottom
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom
     ) {
-      matchedBin = bin;
+      hitBin = bin;
     }
   });
 
-  if (matchedBin) {
-    if (draggingItem.dataset.type === matchedBin.dataset.type) {
-      score++;
-      scoreDisplay.innerText = "Score: " + score;
-    } else {
-      flashRed();
-    }
+  if (hitBin && hitBin.dataset.type === draggingItem.dataset.type) {
+    // CORRECT
+    score++;
+    scoreDisplay.innerText = "Score: " + score;
 
     draggingItem.remove();
     currentIndex++;
-    showNextItem();
+    showItem();
+
   } else {
-    draggingItem.remove();
-    showNextItem();
+    // WRONG
+    flashRed();
+
+    // reset to center
+    draggingItem.style.position = "absolute";
+    draggingItem.style.left = "50%";
+    draggingItem.style.top = "0px";
+    draggingItem.style.transform = "translateX(-50%)";
   }
 
-  window.removeEventListener("mousemove", dragItem);
-  window.removeEventListener("mouseup", dropItem);
+  window.removeEventListener("mousemove", drag);
+  window.removeEventListener("mouseup", drop);
   draggingItem = null;
 }
 
@@ -154,9 +169,11 @@ function flashRed() {
 }
 
 function startTimer() {
+  clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     time--;
     timerDisplay.innerText = time;
+
     if (time <= 0) loseGame();
   }, 1000);
 }
