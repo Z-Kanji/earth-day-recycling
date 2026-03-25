@@ -30,11 +30,13 @@ const endScreen = document.getElementById("endScreen");
 const endText = document.getElementById("endText");
 const restartBtn = document.getElementById("restartBtn");
 
+const confettiContainer = document.getElementById("confetti-container");
+let confettiInterval;
+
 let draggingItem = null;
 let offsetX = 0;
 let offsetY = 0;
 
-// prevent same type back-to-back
 function shuffleNoRepeat(arr) {
   let valid = false;
   let result = [];
@@ -54,6 +56,8 @@ function shuffleNoRepeat(arr) {
 }
 
 function startGame() {
+  stopConfetti();
+
   itemsData = shuffleNoRepeat(itemsDataOriginal);
   currentIndex = 0;
   score = 0;
@@ -96,20 +100,15 @@ function startDrag(e) {
   draggingItem = e.target;
   const rect = draggingItem.getBoundingClientRect();
 
-  // 🔥 FIX: remove transform BEFORE calculating drag
   draggingItem.style.transform = "none";
-
-  // preserve size exactly
   draggingItem.style.width = rect.width + "px";
   draggingItem.style.height = rect.height + "px";
 
-  // lock to exact screen position
   draggingItem.style.position = "fixed";
   draggingItem.style.left = rect.left + "px";
   draggingItem.style.top = rect.top + "px";
   draggingItem.style.zIndex = 1000;
 
-  // NOW calculate offset correctly
   offsetX = e.clientX - rect.left;
   offsetY = e.clientY - rect.top;
 
@@ -156,7 +155,6 @@ function drop(e) {
     draggingItem.style.left = "50%";
     draggingItem.style.top = "50%";
     draggingItem.style.transform = "translate(-50%, -50%)";
-
   } else {
     draggingItem.style.position = "absolute";
     draggingItem.style.left = "50%";
@@ -190,6 +188,8 @@ function winGame() {
   endText.innerText = "YOU WIN";
   endScreen.classList.remove("hidden");
   startBtn.disabled = false;
+
+  startConfetti();
 }
 
 function loseGame() {
@@ -198,6 +198,36 @@ function loseGame() {
   endText.innerText = "YOU LOSE";
   endScreen.classList.remove("hidden");
   startBtn.disabled = false;
+}
+
+function startConfetti() {
+  const colors = ["#ff4d4d", "#4dff88", "#4da6ff", "#ffff66", "#ff66ff"];
+
+  confettiInterval = setInterval(() => {
+    for (let i = 0; i < 12; i++) {
+      const conf = document.createElement("div");
+      conf.classList.add("confetti");
+
+      conf.style.left = Math.random() * 100 + "vw";
+      conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+      const duration = 2 + Math.random() * 2;
+      conf.style.animationDuration = duration + "s";
+
+      confettiContainer.appendChild(conf);
+
+      setTimeout(() => {
+        conf.remove();
+      }, duration * 1000);
+    }
+  }, 200);
+
+  setTimeout(stopConfetti, 15000);
+}
+
+function stopConfetti() {
+  clearInterval(confettiInterval);
+  confettiContainer.innerHTML = "";
 }
 
 startBtn.addEventListener("click", startGame);
