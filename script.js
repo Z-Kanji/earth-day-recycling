@@ -1,3 +1,14 @@
+const urlParams = new URLSearchParams(window.location.search);
+const ablyKey = urlParams.get("ablyKey");
+const mode = urlParams.get("mode");
+
+let ably, channel;
+
+if (ablyKey) {
+  ably = new Ably.Realtime(ablyKey);
+  channel = ably.channels.get("recycling-game");
+}
+
 const itemsDataOriginal = [
   { img: "aerosol.png", type: "metal" },
   { img: "bag.png", type: "paper" },
@@ -29,13 +40,31 @@ const flash = document.getElementById("flash");
 const endScreen = document.getElementById("endScreen");
 const endText = document.getElementById("endText");
 const restartBtn = document.getElementById("restartBtn");
-
 const confettiContainer = document.getElementById("confetti-container");
-let confettiInterval;
 
 let draggingItem = null;
 let offsetX = 0;
 let offsetY = 0;
+
+function publish(event, data) {
+  if (mode === "master" && channel) {
+    channel.publish(event, data);
+  }
+}
+
+function subscribe() {
+  if (mode !== "follow" || !channel) return;
+
+  channel.subscribe(msg => {
+    const { name, data } = msg;
+
+    if (name === "start") startGame(false);
+    if (name === "item") renderItem(data);
+    if (name === "move") moveItem(data);
+    if (name === "drop") handleDropResult(data);
+    if (name === "end") showEnd(data);
+  });
+}
 
 function shuffleNoRepeat(arr) {
   let valid = false;
@@ -55,9 +84,7 @@ function shuffleNoRepeat(arr) {
   return result;
 }
 
-function startGame() {
-  stopConfetti();
-
+function startGame(publishEvent = true) {
   itemsData = shuffleNoRepeat(itemsDataOriginal);
   currentIndex = 0;
   score = 0;
@@ -69,6 +96,8 @@ function startGame() {
   startBtn.disabled = true;
   endScreen.classList.add("hidden");
 
+  if (publishEvent) publish("start");
+
   showItem();
   startTimer();
 }
@@ -76,12 +105,15 @@ function startGame() {
 function showItem() {
   container.innerHTML = "";
 
-  if (currentIndex >= itemsData.length) {
-    winGame();
-    return;
-  }
-
   const item = itemsData[currentIndex];
+
+  renderItem(item);
+  publish("item", item);
+}
+
+function renderItem(item) {
+  container.innerHTML = "";
+
   const img = document.createElement("img");
   img.src = item.img;
   img.dataset.type = item.type;
@@ -90,13 +122,14 @@ function showItem() {
   img.style.left = "50%";
   img.style.transform = "translate(-50%, -50%)";
 
-  img.addEventListener("mousedown", startDrag);
+  if (mode === "master") {
+    img.addEventListener("mousedown", startDrag);
+  }
+
   container.appendChild(img);
 }
 
 function startDrag(e) {
-  if (!gameActive) return;
-
   draggingItem = e.target;
   const rect = draggingItem.getBoundingClientRect();
 
@@ -107,7 +140,6 @@ function startDrag(e) {
   draggingItem.style.position = "fixed";
   draggingItem.style.left = rect.left + "px";
   draggingItem.style.top = rect.top + "px";
-  draggingItem.style.zIndex = 1000;
 
   offsetX = e.clientX - rect.left;
   offsetY = e.clientY - rect.top;
@@ -119,14 +151,27 @@ function startDrag(e) {
 function drag(e) {
   if (!draggingItem) return;
 
-  draggingItem.style.left = (e.clientX - offsetX) + "px";
-  draggingItem.style.top = (e.clientY - offsetY) + "px";
+  const x = e.clientX - offsetX;
+  const y = e.clientY - offsetY;
+
+  draggingItem.style.left = x + "px";
+  draggingItem.style.top = y + "px";
+
+  publish("move", { x, y });
+}
+
+function moveItem(data) {
+  const img = container.querySelector("img");
+  if (!img) return;
+
+  img.style.position = "fixed";
+  img.style.left = data.x + "px";
+  img.style.top = data.y + "px";
+  img.style.transform = "none";
 }
 
 function drop(e) {
-  if (!draggingItem) return;
-
-  let hitBin = null;
+  let correct = false;
 
   bins.forEach(bin => {
     const rect = bin.getBoundingClientRect();
@@ -136,35 +181,44 @@ function drop(e) {
       e.clientY >= rect.top &&
       e.clientY <= rect.bottom
     ) {
-      hitBin = bin;
+      if (bin.dataset.type === draggingItem.dataset.type) {
+        correct = true;
+      }
     }
   });
 
-  if (hitBin && hitBin.dataset.type === draggingItem.dataset.type) {
-    score++;
-    scoreDisplay.innerText = "Score: " + score;
-
-    draggingItem.remove();
-    currentIndex++;
-    showItem();
-
-  } else if (hitBin) {
-    flashRed();
-
-    draggingItem.style.position = "absolute";
-    draggingItem.style.left = "50%";
-    draggingItem.style.top = "50%";
-    draggingItem.style.transform = "translate(-50%, -50%)";
-  } else {
-    draggingItem.style.position = "absolute";
-    draggingItem.style.left = "50%";
-    draggingItem.style.top = "50%";
-    draggingItem.style.transform = "translate(-50%, -50%)";
-  }
+  handleDropResult({ correct });
+  publish("drop", { correct });
 
   window.removeEventListener("mousemove", drag);
   window.removeEventListener("mouseup", drop);
   draggingItem = null;
+}
+
+function handleDropResult(data) {
+  const img = container.querySelector("img");
+
+  if (data.correct) {
+    score++;
+    scoreDisplay.innerText = "Score: " + score;
+
+    img.remove();
+    currentIndex++;
+
+    if (currentIndex >= itemsData.length) {
+      winGame();
+    } else {
+      showItem();
+    }
+
+  } else {
+    flashRed();
+
+    img.style.position = "absolute";
+    img.style.left = "50%";
+    img.style.top = "50%";
+    img.style.transform = "translate(-50%, -50%)";
+  }
 }
 
 function flashRed() {
@@ -183,52 +237,53 @@ function startTimer() {
 }
 
 function winGame() {
-  clearInterval(timerInterval);
   gameActive = false;
   endText.innerText = "YOU WIN";
   endScreen.classList.remove("hidden");
   startBtn.disabled = false;
 
+  publish("end", "win");
   startConfetti();
 }
 
 function loseGame() {
-  clearInterval(timerInterval);
   gameActive = false;
   endText.innerText = "YOU LOSE";
   endScreen.classList.remove("hidden");
   startBtn.disabled = false;
+
+  publish("end", "lose");
+}
+
+function showEnd(result) {
+  endText.innerText = result === "win" ? "YOU WIN" : "YOU LOSE";
+  endScreen.classList.remove("hidden");
+  if (result === "win") startConfetti();
 }
 
 function startConfetti() {
   const colors = ["#ff4d4d", "#4dff88", "#4da6ff", "#ffff66", "#ff66ff"];
 
-  confettiInterval = setInterval(() => {
-    for (let i = 0; i < 12; i++) {
-      const conf = document.createElement("div");
-      conf.classList.add("confetti");
+  const interval = setInterval(() => {
+    for (let i = 0; i < 10; i++) {
+      const c = document.createElement("div");
+      c.className = "confetti";
+      c.style.left = Math.random() * 100 + "vw";
+      c.style.background = colors[Math.floor(Math.random() * colors.length)];
+      c.style.animationDuration = (2 + Math.random() * 2) + "s";
+      confettiContainer.appendChild(c);
 
-      conf.style.left = Math.random() * 100 + "vw";
-      conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-
-      const duration = 2 + Math.random() * 2;
-      conf.style.animationDuration = duration + "s";
-
-      confettiContainer.appendChild(conf);
-
-      setTimeout(() => {
-        conf.remove();
-      }, duration * 1000);
+      setTimeout(() => c.remove(), 3000);
     }
   }, 200);
 
-  setTimeout(stopConfetti, 15000);
+  setTimeout(() => {
+    clearInterval(interval);
+    confettiContainer.innerHTML = "";
+  }, 15000);
 }
 
-function stopConfetti() {
-  clearInterval(confettiInterval);
-  confettiContainer.innerHTML = "";
-}
+startBtn.addEventListener("click", () => startGame(true));
+restartBtn.addEventListener("click", () => startGame(true));
 
-startBtn.addEventListener("click", startGame);
-restartBtn.addEventListener("click", startGame);
+subscribe();
