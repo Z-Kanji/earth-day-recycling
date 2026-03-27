@@ -46,9 +46,9 @@ let draggingItem = null;
 let offsetX = 0;
 let offsetY = 0;
 
-function publish(event, data) {
+function publish(name, data) {
   if (mode === "master" && channel) {
-    channel.publish(event, data);
+    channel.publish(name, data);
   }
 }
 
@@ -58,10 +58,12 @@ function subscribe() {
   channel.subscribe(msg => {
     const { name, data } = msg;
 
-    if (name === "start") startGame(false);
+    if (name === "start") startGame(false, data);
     if (name === "item") renderItem(data);
     if (name === "move") moveItem(data);
     if (name === "drop") handleDropResult(data);
+    if (name === "flash") flashRed();
+    if (name === "timer") updateTimer(data);
     if (name === "end") showEnd(data);
   });
 }
@@ -84,8 +86,14 @@ function shuffleNoRepeat(arr) {
   return result;
 }
 
-function startGame(publishEvent = true) {
-  itemsData = shuffleNoRepeat(itemsDataOriginal);
+function startGame(publishEvent = true, incomingData = null) {
+  if (mode === "master") {
+    itemsData = shuffleNoRepeat(itemsDataOriginal);
+    publish("start", itemsData);
+  } else {
+    itemsData = incomingData;
+  }
+
   currentIndex = 0;
   score = 0;
   time = 60;
@@ -96,19 +104,18 @@ function startGame(publishEvent = true) {
   startBtn.disabled = true;
   endScreen.classList.add("hidden");
 
-  if (publishEvent) publish("start");
-
   showItem();
-  startTimer();
+
+  if (mode === "master") startTimer();
 }
 
 function showItem() {
-  container.innerHTML = "";
-
   const item = itemsData[currentIndex];
-
   renderItem(item);
-  publish("item", item);
+
+  if (mode === "master") {
+    publish("item", item);
+  }
 }
 
 function renderItem(item) {
@@ -121,6 +128,7 @@ function renderItem(item) {
   img.style.top = "50%";
   img.style.left = "50%";
   img.style.transform = "translate(-50%, -50%)";
+  img.style.zIndex = 1000;
 
   if (mode === "master") {
     img.addEventListener("mousedown", startDrag);
@@ -130,6 +138,8 @@ function renderItem(item) {
 }
 
 function startDrag(e) {
+  if (!gameActive) return;
+
   draggingItem = e.target;
   const rect = draggingItem.getBoundingClientRect();
 
@@ -140,6 +150,7 @@ function startDrag(e) {
   draggingItem.style.position = "fixed";
   draggingItem.style.left = rect.left + "px";
   draggingItem.style.top = rect.top + "px";
+  draggingItem.style.zIndex = 1000;
 
   offsetX = e.clientX - rect.left;
   offsetY = e.clientY - rect.top;
@@ -168,6 +179,7 @@ function moveItem(data) {
   img.style.left = data.x + "px";
   img.style.top = data.y + "px";
   img.style.transform = "none";
+  img.style.zIndex = 1000;
 }
 
 function drop(e) {
@@ -213,6 +225,7 @@ function handleDropResult(data) {
 
   } else {
     flashRed();
+    publish("flash");
 
     img.style.position = "absolute";
     img.style.left = "50%";
@@ -228,16 +241,29 @@ function flashRed() {
 
 function startTimer() {
   clearInterval(timerInterval);
-  timerInterval = setInterval(() => {
-    time--;
-    timerDisplay.innerText = time;
 
-    if (time <= 0) loseGame();
+  timerInterval = setInterval(() => {
+    if (!gameActive) return;
+
+    time--;
+    updateTimer(time);
+    publish("timer", time);
+
+    if (time <= 0) {
+      time = 0;
+      loseGame();
+    }
   }, 1000);
 }
 
+function updateTimer(t) {
+  timerDisplay.innerText = t;
+}
+
 function winGame() {
+  clearInterval(timerInterval);
   gameActive = false;
+
   endText.innerText = "YOU WIN";
   endScreen.classList.remove("hidden");
   startBtn.disabled = false;
@@ -247,7 +273,9 @@ function winGame() {
 }
 
 function loseGame() {
+  clearInterval(timerInterval);
   gameActive = false;
+
   endText.innerText = "YOU LOSE";
   endScreen.classList.remove("hidden");
   startBtn.disabled = false;
@@ -256,8 +284,11 @@ function loseGame() {
 }
 
 function showEnd(result) {
+  gameActive = false;
+
   endText.innerText = result === "win" ? "YOU WIN" : "YOU LOSE";
   endScreen.classList.remove("hidden");
+
   if (result === "win") startConfetti();
 }
 
