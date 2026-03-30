@@ -45,6 +45,7 @@ const confettiContainer = document.getElementById("confetti-container");
 let draggingItem = null;
 let offsetX = 0;
 let offsetY = 0;
+let followLockedSize = false; // ✅ NEW
 
 function publish(name, data) {
   if (mode === "master" && channel) {
@@ -63,7 +64,7 @@ function subscribe() {
     if (name === "move") moveItem(data);
     if (name === "drop") handleDropResult(data);
     if (name === "flash") flashRed();
-    if (name === "timer") updateTimer(data);
+    if (name === "timer") updateTimer(data); // ✅ FIXED
     if (name === "end") showEnd(data);
   });
 }
@@ -96,13 +97,17 @@ function startGame(publishEvent = true, incomingData = null) {
 
   currentIndex = 0;
   score = 0;
-  time = 60;
   gameActive = true;
 
   scoreDisplay.innerText = "Score: 0";
-  timerDisplay.innerText = "60";
   startBtn.disabled = true;
   endScreen.classList.add("hidden");
+
+  // ❗ IMPORTANT: DO NOT RESET TIMER ON FOLLOW
+  if (mode === "master") {
+    time = 60;
+    timerDisplay.innerText = "60";
+  }
 
   showItem();
 
@@ -120,6 +125,7 @@ function showItem() {
 
 function renderItem(item) {
   container.innerHTML = "";
+  followLockedSize = false; // reset for new item
 
   const img = document.createElement("img");
   img.src = item.img;
@@ -174,6 +180,14 @@ function drag(e) {
 function moveItem(data) {
   const img = container.querySelector("img");
   if (!img) return;
+
+  // ✅ LOCK SIZE ON FIRST MOVE (prevents resize glitch)
+  if (!followLockedSize) {
+    const rect = img.getBoundingClientRect();
+    img.style.width = rect.width + "px";
+    img.style.height = rect.height + "px";
+    followLockedSize = true;
+  }
 
   img.style.position = "fixed";
   img.style.left = data.x + "px";
@@ -246,13 +260,18 @@ function startTimer() {
     if (!gameActive) return;
 
     time--;
-    updateTimer(time);
-    publish("timer", time);
 
     if (time <= 0) {
       time = 0;
+      updateTimer(time);
+      publish("timer", time);
       loseGame();
+      return;
     }
+
+    updateTimer(time);
+    publish("timer", time);
+
   }, 1000);
 }
 
@@ -266,7 +285,6 @@ function winGame() {
 
   endText.innerText = "YOU WIN";
   endScreen.classList.remove("hidden");
-  startBtn.disabled = false;
 
   publish("end", "win");
   startConfetti();
@@ -278,7 +296,6 @@ function loseGame() {
 
   endText.innerText = "YOU LOSE";
   endScreen.classList.remove("hidden");
-  startBtn.disabled = false;
 
   publish("end", "lose");
 }
