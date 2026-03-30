@@ -24,11 +24,18 @@ const itemsDataOriginal = [
   { img: "tin.png", type: "metal" }
 ];
 
+let state = {
+  time: 60,
+  score: 0,
+  index: 0,
+  item: null,
+  x: 0,
+  y: 0,
+  dragging: false,
+  status: "idle" // idle | playing | win | lose
+};
+
 let itemsData = [];
-let currentIndex = 0;
-let score = 0;
-let time = 60;
-let gameActive = false;
 let timerInterval;
 
 const container = document.getElementById("current-item");
@@ -39,33 +46,23 @@ const startBtn = document.getElementById("startBtn");
 const flash = document.getElementById("flash");
 const endScreen = document.getElementById("endScreen");
 const endText = document.getElementById("endText");
-const restartBtn = document.getElementById("restartBtn");
-const confettiContainer = document.getElementById("confetti-container");
 
-let draggingItem = null;
+let dragging = false;
 let offsetX = 0;
 let offsetY = 0;
-let followLockedSize = false; // ✅ NEW
 
-function publish(name, data) {
+function publishState() {
   if (mode === "master" && channel) {
-    channel.publish(name, data);
+    channel.publish("state", state);
   }
 }
 
 function subscribe() {
   if (mode !== "follow" || !channel) return;
 
-  channel.subscribe(msg => {
-    const { name, data } = msg;
-
-    if (name === "start") startGame(false, data);
-    if (name === "item") renderItem(data);
-    if (name === "move") moveItem(data);
-    if (name === "drop") handleDropResult(data);
-    if (name === "flash") flashRed();
-    if (name === "timer") updateTimer(data); // ✅ FIXED
-    if (name === "end") showEnd(data);
+  channel.subscribe("state", msg => {
+    state = msg.data;
+    render();
   });
 }
 
@@ -87,77 +84,92 @@ function shuffleNoRepeat(arr) {
   return result;
 }
 
-function startGame(publishEvent = true, incomingData = null) {
-  if (mode === "master") {
-    itemsData = shuffleNoRepeat(itemsDataOriginal);
-    publish("start", itemsData);
-  } else {
-    itemsData = incomingData;
-  }
+function startGame() {
+  itemsData = shuffleNoRepeat(itemsDataOriginal);
 
-  currentIndex = 0;
-  score = 0;
-  gameActive = true;
+  state = {
+    time: 60,
+    score: 0,
+    index: 0,
+    item: itemsData[0],
+    x: 0,
+    y: 0,
+    dragging: false,
+    status: "playing"
+  };
 
-  scoreDisplay.innerText = "Score: 0";
   startBtn.disabled = true;
   endScreen.classList.add("hidden");
 
-  // ❗ IMPORTANT: DO NOT RESET TIMER ON FOLLOW
-  if (mode === "master") {
-    time = 60;
-    timerDisplay.innerText = "60";
-  }
-
-  showItem();
-
-  if (mode === "master") startTimer();
+  startTimer();
+  gameLoop();
 }
 
-function showItem() {
-  const item = itemsData[currentIndex];
-  renderItem(item);
+function startTimer() {
+  clearInterval(timerInterval);
 
+  timerInterval = setInterval(() => {
+    if (state.status !== "playing") return;
+
+    state.time--;
+
+    if (state.time <= 0) {
+      state.time = 0;
+      state.status = "lose";
+      clearInterval(timerInterval);
+    }
+
+  }, 1000);
+}
+
+function gameLoop() {
   if (mode === "master") {
-    publish("item", item);
+    render();
+    publishState();
+    requestAnimationFrame(gameLoop);
   }
 }
 
-function renderItem(item) {
+function render() {
+  timerDisplay.innerText = state.time;
+  scoreDisplay.innerText = "Score: " + state.score;
+
   container.innerHTML = "";
-  followLockedSize = false; // reset for new item
+
+  if (!state.item) return;
 
   const img = document.createElement("img");
-  img.src = item.img;
-  img.dataset.type = item.type;
+  img.src = state.item.img;
 
-  img.style.top = "50%";
-  img.style.left = "50%";
-  img.style.transform = "translate(-50%, -50%)";
-  img.style.zIndex = 1000;
+  if (state.dragging) {
+    img.style.position = "fixed";
+    img.style.left = state.x + "px";
+    img.style.top = state.y + "px";
+    img.style.zIndex = 1000;
+  } else {
+    img.style.position = "absolute";
+    img.style.left = "50%";
+    img.style.top = "50%";
+    img.style.transform = "translate(-50%, -50%)";
+  }
 
   if (mode === "master") {
     img.addEventListener("mousedown", startDrag);
   }
 
   container.appendChild(img);
+
+  if (state.status === "win" || state.status === "lose") {
+    endText.innerText = state.status === "win" ? "YOU WIN" : "YOU LOSE";
+    endScreen.classList.remove("hidden");
+  }
 }
 
 function startDrag(e) {
-  if (!gameActive) return;
+  dragging = true;
+  state.dragging = true;
 
-  draggingItem = e.target;
-  const rect = draggingItem.getBoundingClientRect();
-
-  draggingItem.style.transform = "none";
-  draggingItem.style.width = rect.width + "px";
-  draggingItem.style.height = rect.height + "px";
-
-  draggingItem.style.position = "fixed";
-  draggingItem.style.left = rect.left + "px";
-  draggingItem.style.top = rect.top + "px";
-  draggingItem.style.zIndex = 1000;
-
+  const rect = e.target.getBoundingClientRect();
   offsetX = e.clientX - rect.left;
   offsetY = e.clientY - rect.top;
 
@@ -166,37 +178,16 @@ function startDrag(e) {
 }
 
 function drag(e) {
-  if (!draggingItem) return;
+  if (!dragging) return;
 
-  const x = e.clientX - offsetX;
-  const y = e.clientY - offsetY;
-
-  draggingItem.style.left = x + "px";
-  draggingItem.style.top = y + "px";
-
-  publish("move", { x, y });
-}
-
-function moveItem(data) {
-  const img = container.querySelector("img");
-  if (!img) return;
-
-  // ✅ LOCK SIZE ON FIRST MOVE (prevents resize glitch)
-  if (!followLockedSize) {
-    const rect = img.getBoundingClientRect();
-    img.style.width = rect.width + "px";
-    img.style.height = rect.height + "px";
-    followLockedSize = true;
-  }
-
-  img.style.position = "fixed";
-  img.style.left = data.x + "px";
-  img.style.top = data.y + "px";
-  img.style.transform = "none";
-  img.style.zIndex = 1000;
+  state.x = e.clientX - offsetX;
+  state.y = e.clientY - offsetY;
 }
 
 function drop(e) {
+  dragging = false;
+  state.dragging = false;
+
   let correct = false;
 
   bins.forEach(bin => {
@@ -207,45 +198,28 @@ function drop(e) {
       e.clientY >= rect.top &&
       e.clientY <= rect.bottom
     ) {
-      if (bin.dataset.type === draggingItem.dataset.type) {
+      if (bin.dataset.type === state.item.type) {
         correct = true;
       }
     }
   });
 
-  handleDropResult({ correct });
-  publish("drop", { correct });
+  if (correct) {
+    state.score++;
+    state.index++;
+
+    if (state.index >= itemsData.length) {
+      state.status = "win";
+      clearInterval(timerInterval);
+    } else {
+      state.item = itemsData[state.index];
+    }
+  } else {
+    flashRed();
+  }
 
   window.removeEventListener("mousemove", drag);
   window.removeEventListener("mouseup", drop);
-  draggingItem = null;
-}
-
-function handleDropResult(data) {
-  const img = container.querySelector("img");
-
-  if (data.correct) {
-    score++;
-    scoreDisplay.innerText = "Score: " + score;
-
-    img.remove();
-    currentIndex++;
-
-    if (currentIndex >= itemsData.length) {
-      winGame();
-    } else {
-      showItem();
-    }
-
-  } else {
-    flashRed();
-    publish("flash");
-
-    img.style.position = "absolute";
-    img.style.left = "50%";
-    img.style.top = "50%";
-    img.style.transform = "translate(-50%, -50%)";
-  }
 }
 
 function flashRed() {
@@ -253,85 +227,6 @@ function flashRed() {
   setTimeout(() => flash.style.opacity = 0, 1000);
 }
 
-function startTimer() {
-  clearInterval(timerInterval);
-
-  timerInterval = setInterval(() => {
-    if (!gameActive) return;
-
-    time--;
-
-    if (time <= 0) {
-      time = 0;
-      updateTimer(time);
-      publish("timer", time);
-      loseGame();
-      return;
-    }
-
-    updateTimer(time);
-    publish("timer", time);
-
-  }, 1000);
-}
-
-function updateTimer(t) {
-  timerDisplay.innerText = t;
-}
-
-function winGame() {
-  clearInterval(timerInterval);
-  gameActive = false;
-
-  endText.innerText = "YOU WIN";
-  endScreen.classList.remove("hidden");
-
-  publish("end", "win");
-  startConfetti();
-}
-
-function loseGame() {
-  clearInterval(timerInterval);
-  gameActive = false;
-
-  endText.innerText = "YOU LOSE";
-  endScreen.classList.remove("hidden");
-
-  publish("end", "lose");
-}
-
-function showEnd(result) {
-  gameActive = false;
-
-  endText.innerText = result === "win" ? "YOU WIN" : "YOU LOSE";
-  endScreen.classList.remove("hidden");
-
-  if (result === "win") startConfetti();
-}
-
-function startConfetti() {
-  const colors = ["#ff4d4d", "#4dff88", "#4da6ff", "#ffff66", "#ff66ff"];
-
-  const interval = setInterval(() => {
-    for (let i = 0; i < 10; i++) {
-      const c = document.createElement("div");
-      c.className = "confetti";
-      c.style.left = Math.random() * 100 + "vw";
-      c.style.background = colors[Math.floor(Math.random() * colors.length)];
-      c.style.animationDuration = (2 + Math.random() * 2) + "s";
-      confettiContainer.appendChild(c);
-
-      setTimeout(() => c.remove(), 3000);
-    }
-  }, 200);
-
-  setTimeout(() => {
-    clearInterval(interval);
-    confettiContainer.innerHTML = "";
-  }, 15000);
-}
-
-startBtn.addEventListener("click", () => startGame(true));
-restartBtn.addEventListener("click", () => startGame(true));
+startBtn.addEventListener("click", startGame);
 
 subscribe();
