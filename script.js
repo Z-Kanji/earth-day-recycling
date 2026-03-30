@@ -29,8 +29,9 @@ let currentIndex = 0;
 let score = 0;
 let time = 60;
 let gameActive = false;
-let timerInterval;
-let followTimerInterval;
+let timerInterval = null;
+let followTimerInterval = null;
+let startTimeMs = null;
 
 const container = document.getElementById("current-item");
 const bins = document.querySelectorAll(".bin");
@@ -48,7 +49,6 @@ let offsetX = 0;
 let offsetY = 0;
 let followLockedSize = false;
 
-// ---------- ABLY ----------
 function publish(name, data) {
   if (mode === "master" && channel) {
     channel.publish(name, data);
@@ -61,17 +61,22 @@ function subscribe() {
   channel.subscribe(msg => {
     const { name, data } = msg;
 
-    if (name === "start") startGame(false, data);
-    if (name === "item") renderItem(data);
-    if (name === "move") moveItem(data);
-    if (name === "drop") handleDropResult(data);
-    if (name === "flash") flashRed();
-    if (name === "timerStart") startFollowTimer(data);
-    if (name === "end") showEnd(data);
+    if (name === "gameStart") {
+      startGame(false, data);
+    } else if (name === "item") {
+      renderItem(data);
+    } else if (name === "move") {
+      moveItem(data);
+    } else if (name === "drop") {
+      handleDropResult(data);
+    } else if (name === "flash") {
+      flashRed();
+    } else if (name === "end") {
+      showEnd(data);
+    }
   });
 }
 
-// ---------- GAME ----------
 function shuffleNoRepeat(arr) {
   let valid = false;
   let result = [];
@@ -87,21 +92,29 @@ function shuffleNoRepeat(arr) {
       }
     }
   }
+
   return result;
 }
 
 function startGame(publishEvent = true, incomingData = null) {
   if (mode === "master") {
     itemsData = shuffleNoRepeat(itemsDataOriginal);
-    publish("start", itemsData);
+    startTimeMs = Date.now();
+
+    publish("gameStart", {
+      itemsData,
+      startTimeMs
+    });
   } else {
-    itemsData = incomingData;
+    itemsData = incomingData.itemsData;
+    startTimeMs = incomingData.startTimeMs;
   }
 
   currentIndex = 0;
   score = 0;
   time = 60;
   gameActive = true;
+  followLockedSize = false;
 
   scoreDisplay.innerText = "Score: 0";
   timerDisplay.innerText = "60";
@@ -111,17 +124,29 @@ function startGame(publishEvent = true, incomingData = null) {
 
   showItem();
 
-  if (mode === "master") startTimer();
+  if (mode === "master") {
+    startMasterTimer();
+  } else {
+    startFollowTimer();
+  }
 }
 
-// ---------- ITEMS ----------
 function showItem() {
   if (!gameActive) return;
+
+  container.innerHTML = "";
+
+  if (currentIndex >= itemsData.length) {
+    winGame();
+    return;
+  }
 
   const item = itemsData[currentIndex];
   renderItem(item);
 
-  if (mode === "master") publish("item", item);
+  if (mode === "master") {
+    publish("item", item);
+  }
 }
 
 function renderItem(item) {
@@ -144,7 +169,6 @@ function renderItem(item) {
   container.appendChild(img);
 }
 
-// ---------- DRAG ----------
 function startDrag(e) {
   if (!gameActive) return;
 
@@ -154,7 +178,6 @@ function startDrag(e) {
   draggingItem.style.transform = "none";
   draggingItem.style.width = rect.width + "px";
   draggingItem.style.height = rect.height + "px";
-
   draggingItem.style.position = "fixed";
   draggingItem.style.left = rect.left + "px";
   draggingItem.style.top = rect.top + "px";
@@ -197,8 +220,9 @@ function moveItem(data) {
   img.style.zIndex = 1000;
 }
 
-// ---------- DROP ----------
 function drop(e) {
+  if (!draggingItem) return;
+
   let correct = false;
 
   bins.forEach(bin => {
@@ -227,6 +251,7 @@ function handleDropResult(data) {
   if (!gameActive) return;
 
   const img = container.querySelector("img");
+  if (!img) return;
 
   if (data.correct) {
     score++;
@@ -240,7 +265,6 @@ function handleDropResult(data) {
     } else {
       showItem();
     }
-
   } else {
     flashRed();
     publish("flash");
@@ -252,59 +276,63 @@ function handleDropResult(data) {
   }
 }
 
-// ---------- TIMER ----------
-function startTimer() {
-  clearInterval(timerInterval);
+function flashRed() {
+  flash.style.opacity = 0.6;
+  setTimeout(() => {
+    flash.style.opacity = 0;
+  }, 1000);
+}
 
-  const startTime = Date.now();
-  publish("timerStart", startTime);
+function startMasterTimer() {
+  clearInterval(timerInterval);
 
   timerInterval = setInterval(() => {
     if (!gameActive) return;
 
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    time = 60 - elapsed;
+    const elapsed = Math.floor((Date.now() - startTimeMs) / 1000);
+    const remaining = 60 - elapsed;
 
-    if (time <= 0) {
+    if (remaining <= 0) {
       time = 0;
-      updateTimer(time);
+      updateTimer(0);
       loseGame();
       return;
     }
 
+    time = remaining;
     updateTimer(time);
-
   }, 100);
 }
 
-function startFollowTimer(startTime) {
+function startFollowTimer() {
   clearInterval(followTimerInterval);
-
-  // 🔥 THIS LINE FIXES YOUR BUG
   gameActive = true;
 
   followTimerInterval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const t = 60 - elapsed;
+    const elapsed = Math.floor((Date.now() - startTimeMs) / 1000);
+    const remaining = 60 - elapsed;
 
-    if (t <= 0) {
+    if (remaining <= 0) {
       updateTimer(0);
       clearInterval(followTimerInterval);
       return;
     }
 
-    updateTimer(t);
-
+    updateTimer(remaining);
   }, 100);
+
+  const initialElapsed = Math.floor((Date.now() - startTimeMs) / 1000);
+  const initialRemaining = Math.max(0, 60 - initialElapsed);
+  updateTimer(initialRemaining);
 }
 
-function updateTimer(t) {
-  timerDisplay.innerText = t;
+function updateTimer(value) {
+  timerDisplay.innerText = value;
 }
 
-// ---------- END ----------
 function winGame() {
   clearInterval(timerInterval);
+  clearInterval(followTimerInterval);
   gameActive = false;
 
   endText.innerText = "YOU WIN";
@@ -316,6 +344,7 @@ function winGame() {
 
 function loseGame() {
   clearInterval(timerInterval);
+  clearInterval(followTimerInterval);
   gameActive = false;
 
   endText.innerText = "YOU LOSE";
@@ -325,18 +354,16 @@ function loseGame() {
 }
 
 function showEnd(result) {
+  clearInterval(timerInterval);
+  clearInterval(followTimerInterval);
   gameActive = false;
 
   endText.innerText = result === "win" ? "YOU WIN" : "YOU LOSE";
   endScreen.classList.remove("hidden");
 
-  if (result === "win") startConfetti();
-}
-
-// ---------- FX ----------
-function flashRed() {
-  flash.style.opacity = 0.6;
-  setTimeout(() => flash.style.opacity = 0, 1000);
+  if (result === "win") {
+    startConfetti();
+  }
 }
 
 function startConfetti() {
@@ -361,7 +388,6 @@ function startConfetti() {
   }, 15000);
 }
 
-// ---------- INIT ----------
 startBtn.addEventListener("click", () => startGame(true));
 restartBtn.addEventListener("click", () => startGame(true));
 
