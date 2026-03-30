@@ -47,6 +47,8 @@ let offsetX = 0;
 let offsetY = 0;
 let followLockedSize = false;
 
+let followTimerInterval;
+
 // ---------- ABLY ----------
 function publish(name, data) {
   if (mode === "master" && channel) {
@@ -65,7 +67,7 @@ function subscribe() {
     if (name === "move") moveItem(data);
     if (name === "drop") handleDropResult(data);
     if (name === "flash") flashRed();
-    if (name === "timer") updateTimer(data);
+    if (name === "timerStart") startFollowTimer(data);
     if (name === "end") showEnd(data);
   });
 }
@@ -113,6 +115,7 @@ function startGame(publishEvent = true, incomingData = null) {
   if (mode === "master") startTimer();
 }
 
+// ---------- ITEMS ----------
 function showItem() {
   if (!gameActive) return;
 
@@ -254,23 +257,45 @@ function handleDropResult(data) {
 function startTimer() {
   clearInterval(timerInterval);
 
+  const startTime = Date.now();
+  publish("timerStart", startTime);
+
   timerInterval = setInterval(() => {
     if (!gameActive) return;
 
-    time--;
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    time = 60 - elapsed;
 
     if (time <= 0) {
       time = 0;
       updateTimer(time);
-      publish("timer", time);
       loseGame();
       return;
     }
 
     updateTimer(time);
-    publish("timer", time);
 
-  }, 1000);
+  }, 100);
+}
+
+function startFollowTimer(startTime) {
+  clearInterval(followTimerInterval);
+
+  followTimerInterval = setInterval(() => {
+    if (!gameActive) return;
+
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const t = 60 - elapsed;
+
+    if (t <= 0) {
+      updateTimer(0);
+      clearInterval(followTimerInterval);
+      return;
+    }
+
+    updateTimer(t);
+
+  }, 100);
 }
 
 function updateTimer(t) {
