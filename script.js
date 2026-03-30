@@ -30,6 +30,7 @@ let score = 0;
 let time = 60;
 let gameActive = false;
 let timerInterval;
+let followTimerInterval;
 
 const container = document.getElementById("current-item");
 const bins = document.querySelectorAll(".bin");
@@ -46,8 +47,6 @@ let draggingItem = null;
 let offsetX = 0;
 let offsetY = 0;
 let followLockedSize = false;
-
-let followTimerInterval;
 
 // ---------- ABLY ----------
 function publish(name, data) {
@@ -281,9 +280,10 @@ function startTimer() {
 function startFollowTimer(startTime) {
   clearInterval(followTimerInterval);
 
-  followTimerInterval = setInterval(() => {
-    if (!gameActive) return;
+  // 🔥 THIS LINE FIXES YOUR BUG
+  gameActive = true;
 
+  followTimerInterval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
     const t = 60 - elapsed;
 
