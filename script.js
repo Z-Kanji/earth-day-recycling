@@ -1,6 +1,9 @@
+// --- CONFIG ---
 const urlParams = new URLSearchParams(window.location.search);
 const ablyKey = urlParams.get("ablyKey");
 const mode = urlParams.get("mode");
+
+const SCALE = 0.75; // scale matches CSS
 
 let ably, channel;
 
@@ -39,6 +42,7 @@ let state = {
   flashUntil: 0
 };
 
+// --- DOM ELEMENTS ---
 const container = document.getElementById("current-item");
 const bins = document.querySelectorAll(".bin");
 const timerDisplay = document.getElementById("timer");
@@ -50,6 +54,7 @@ const endText = document.getElementById("endText");
 const restartBtn = document.getElementById("restartBtn");
 const confettiContainer = document.getElementById("confetti-container");
 
+// --- DRAGGING STATE ---
 let draggingItem = null;
 let offsetX = 0;
 let offsetY = 0;
@@ -69,6 +74,7 @@ if (mode === "follow") {
   restartBtn.style.display = "none";
 }
 
+// --- PUBLISH/SUBSCRIBE ---
 function publish(name, data) {
   if (mode === "master" && channel) {
     channel.publish(name, data);
@@ -121,6 +127,7 @@ function subscribe() {
   });
 }
 
+// --- UTILS ---
 function shuffleNoRepeat(arr) {
   let valid = false;
   let result = [];
@@ -140,6 +147,7 @@ function shuffleNoRepeat(arr) {
   return result;
 }
 
+// --- GAME LOGIC ---
 function startGame(publishEvent = true, incomingData = null) {
   if (mode === "master") {
     itemsData = shuffleNoRepeat(itemsDataOriginal);
@@ -166,7 +174,6 @@ function startGame(publishEvent = true, incomingData = null) {
   draggingItem = null;
   offsetX = 0;
   offsetY = 0;
-
   currentRenderedIndex = -1;
   currentImgEl = null;
   sizeLockedThisDrag = false;
@@ -179,12 +186,7 @@ function startGame(publishEvent = true, incomingData = null) {
   stopConfetti();
 
   renderState();
-
-  if (mode === "master") {
-    startLoop();
-  } else {
-    startLoop();
-  }
+  startLoop();
 }
 
 function applyGameStart(data) {
@@ -202,7 +204,6 @@ function applyGameStart(data) {
   draggingItem = null;
   offsetX = 0;
   offsetY = 0;
-
   currentRenderedIndex = -1;
   currentImgEl = null;
   sizeLockedThisDrag = false;
@@ -232,6 +233,7 @@ function applyStateSnapshot(snapshot) {
   renderState();
 }
 
+// --- ITEM RENDERING ---
 function createCurrentItem() {
   container.innerHTML = "";
   currentRenderedIndex = state.currentIndex;
@@ -263,6 +265,7 @@ function createCurrentItem() {
   currentImgEl = img;
 }
 
+// --- TIMER ---
 function updateClock() {
   if (state.phase !== "playing" || !state.startTimeMs) return;
 
@@ -276,6 +279,7 @@ function updateClock() {
   }
 }
 
+// --- RENDER ---
 function renderState() {
   if (state.phase === "playing") {
     timerDisplay.innerText = String(state.time);
@@ -289,16 +293,9 @@ function renderState() {
       currentImgEl.style.zIndex = "1000";
 
       if (state.dragging) {
-        if (mode === "follow" && !sizeLockedThisDrag) {
-          const rect = currentImgEl.getBoundingClientRect();
-          currentImgEl.style.width = rect.width + "px";
-          currentImgEl.style.height = rect.height + "px";
-          sizeLockedThisDrag = true;
-        }
-
         currentImgEl.style.position = "fixed";
-        currentImgEl.style.left = state.x + "px";
-        currentImgEl.style.top = state.y + "px";
+        currentImgEl.style.left = state.x * SCALE + "px";
+        currentImgEl.style.top = state.y * SCALE + "px";
         currentImgEl.style.transform = "none";
       } else {
         currentImgEl.style.position = "absolute";
@@ -347,6 +344,7 @@ function updateFlashOverlay() {
   }
 }
 
+// --- DRAGGING ---
 function startDrag(e) {
   if (state.phase !== "playing") return;
 
@@ -361,12 +359,12 @@ function startDrag(e) {
   draggingItem.style.transform = "none";
   draggingItem.style.zIndex = "1000";
 
-  offsetX = e.clientX - rect.left;
-  offsetY = e.clientY - rect.top;
+  offsetX = (e.clientX - rect.left) / SCALE;
+  offsetY = (e.clientY - rect.top) / SCALE;
 
   state.dragging = true;
-  state.x = rect.left;
-  state.y = rect.top;
+  state.x = rect.left / SCALE;
+  state.y = rect.top / SCALE;
 
   publishState();
 
@@ -377,11 +375,11 @@ function startDrag(e) {
 function drag(e) {
   if (!draggingItem || state.phase !== "playing") return;
 
-  state.x = e.clientX - offsetX;
-  state.y = e.clientY - offsetY;
+  state.x = e.clientX / SCALE - offsetX;
+  state.y = e.clientY / SCALE - offsetY;
 
-  draggingItem.style.left = state.x + "px";
-  draggingItem.style.top = state.y + "px";
+  draggingItem.style.left = state.x * SCALE + "px";
+  draggingItem.style.top = state.y * SCALE + "px";
   draggingItem.style.zIndex = "1000";
 
   schedulePublish();
@@ -444,6 +442,7 @@ function drop(e) {
   draggingItem = null;
 }
 
+// --- END GAME ---
 function endGame(result) {
   state.phase = result;
   state.dragging = false;
@@ -458,9 +457,9 @@ function endGame(result) {
     startConfetti();
   } else {
     stopConfetti();
-  }
 }
 
+// --- CONFETTI ---
 function startConfetti() {
   if (confettiStarted) return;
   confettiStarted = true;
@@ -496,6 +495,7 @@ function stopConfetti() {
   confettiContainer.innerHTML = "";
 }
 
+// --- GAME LOOP ---
 function startLoop() {
   if (loopStarted) return;
   loopStarted = true;
@@ -514,6 +514,7 @@ function startLoop() {
   requestAnimationFrame(loop);
 }
 
+// --- EVENTS ---
 startBtn.addEventListener("click", () => {
   if (mode !== "master") return;
   startGame(true);
