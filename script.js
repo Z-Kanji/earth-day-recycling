@@ -249,6 +249,7 @@ function createCurrentItem() {
   img.style.zIndex = "1000";
   img.style.willChange = "transform, left, top";
   img.style.pointerEvents = "auto";
+  img.style.cursor = "grab";
 
   if (mode === "master") {
     img.addEventListener("mousedown", startDrag);
@@ -289,12 +290,14 @@ function renderState() {
         currentImgEl.style.top = state.y + "px";
         currentImgEl.style.transform = "none";
         currentImgEl.style.pointerEvents = "none";
+        currentImgEl.style.cursor = "grabbing";
       } else {
         currentImgEl.style.position = "absolute";
         currentImgEl.style.left = "50%";
         currentImgEl.style.top = "50%";
         currentImgEl.style.transform = "translate(-50%, -50%)";
         currentImgEl.style.pointerEvents = "auto";
+        currentImgEl.style.cursor = "grab";
       }
     }
 
@@ -347,6 +350,7 @@ function startDrag(e) {
   draggingItem.style.zIndex = "1000";
   draggingItem.style.transform = "none";
   draggingItem.style.pointerEvents = "none";
+  draggingItem.style.cursor = "grabbing";
   draggingItem.style.left = rect.left + "px";
   draggingItem.style.top = rect.top + "px";
 
@@ -425,6 +429,12 @@ function drop(e) {
 
   window.removeEventListener("mousemove", drag);
   window.removeEventListener("mouseup", drop);
+
+  if (draggingItem) {
+    draggingItem.style.pointerEvents = "auto";
+    draggingItem.style.cursor = "grab";
+  }
+
   draggingItem = null;
 }
 
