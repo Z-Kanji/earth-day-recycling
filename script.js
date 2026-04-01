@@ -1,9 +1,6 @@
-// --- CONFIG ---
 const urlParams = new URLSearchParams(window.location.search);
 const ablyKey = urlParams.get("ablyKey");
 const mode = urlParams.get("mode");
-
-const SCALE = 0.75; // scale matches CSS
 
 let ably, channel;
 
@@ -42,7 +39,6 @@ let state = {
   flashUntil: 0
 };
 
-// --- DOM ELEMENTS ---
 const container = document.getElementById("current-item");
 const bins = document.querySelectorAll(".bin");
 const timerDisplay = document.getElementById("timer");
@@ -54,7 +50,6 @@ const endText = document.getElementById("endText");
 const restartBtn = document.getElementById("restartBtn");
 const confettiContainer = document.getElementById("confetti-container");
 
-// --- DRAGGING STATE ---
 let draggingItem = null;
 let offsetX = 0;
 let offsetY = 0;
