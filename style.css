@@ -13,15 +13,18 @@ img {
 }
 
 #game-shell {
-  height: 56vh; /* 75% of previous 75vh -> approx 25% smaller */
-  width: 56%;   /* 75% of previous 75% -> approx 25% smaller */
-  max-width: 750px;
-  margin: 0 auto;
+  height: 75vh;
+  width: 75%;
+  max-width: 1000px;
+  margin: auto;
   box-sizing: border-box;
   padding: 10px 16px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  transform: scale(0.75);
+  transform-origin: top left;
 }
 
 #flash {
@@ -56,14 +59,17 @@ img {
 }
 
 @keyframes fall {
-  0% { transform: translateY(-10vh) rotate(0deg); }
-  100% { transform: translateY(110vh) rotate(360deg); }
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+  }
+  100% {
+    transform: translateY(110vh) rotate(360deg);
+  }
 }
 
 #timer {
-  font-size: clamp(32px, 4vh, 45px);
+  font-size: clamp(44px, 5vh, 60px);
   margin: 0 0 6px 0;
-  flex: 0 0 auto;
 }
 
 #item-zone {
@@ -73,7 +79,7 @@ img {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  min-height: 150px;
+  min-height: 200px;
   position: relative;
 }
 
@@ -98,41 +104,38 @@ img {
 
 .bins {
   width: 100%;
-  flex: 0 0 auto;
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: 45px; /* reduced to match smaller size */
+  gap: 60px;
   margin: 10px 0 0 0;
-  padding: 0;
 }
 
 .bin {
   width: auto;
-  height: 450px; /* scaled down */
-  transform-origin: center center;
+  height: 600px;
   cursor: pointer;
   transition: transform 0.2s;
-  user-select: none;
-  -webkit-user-drag: none;
-  position: relative;
 }
 
-.bin.correct { transform: scale(1.08); }
-.bin.wrong { animation: shake 0.3s; }
+.bin.correct {
+  transform: scale(1.08);
+}
 
-#startBtn {
-  flex: 0 0 auto;
-  margin-top: 6px;
+.bin.wrong {
+  animation: shake 0.3s;
+}
+
+#startBtn, #restartBtn {
   padding: 10px 20px;
-  font-size: clamp(14px, 2vh, 18px);
+  font-size: clamp(16px, 2.1vh, 20px);
   cursor: pointer;
+  margin-top: 6px;
 }
 
 #score {
-  flex: 0 0 auto;
+  font-size: clamp(20px, 2.4vh, 26px);
   margin-top: 8px;
-  font-size: clamp(16px, 2vh, 20px);
 }
 
 #endScreen {
@@ -149,23 +152,19 @@ img {
   z-index: 1000;
 }
 
-#endScreen.hidden { display: none; }
+#endScreen.hidden {
+  display: none;
+}
 
 #endScreen h1 {
-  font-size: 40px;
+  font-size: 50px;
   margin: 0 0 20px 0;
 }
 
-#restartBtn {
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
 @keyframes shake {
-  0% { transform: translateX(0) scale(1); }
-  25% { transform: translateX(-5px) scale(1); }
-  50% { transform: translateX(5px) scale(1); }
-  75% { transform: translateX(-5px) scale(1); }
-  100% { transform: translateX(0) scale(1); }
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
 }
