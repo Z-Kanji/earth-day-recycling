@@ -3,7 +3,6 @@ const ablyKey = urlParams.get("ablyKey");
 const mode = urlParams.get("mode");
 
 let ably, channel;
-
 if (ablyKey) {
   ably = new Ably.Realtime(ablyKey);
   channel = ably.channels.get("recycling-game");
@@ -54,7 +53,6 @@ let draggingItem = null;
 let dragOffset = { x: 0, y: 0 };
 let currentRenderedIndex = -1;
 let currentImgEl = null;
-let sizeLockedThisDrag = false;
 let confettiInterval = null;
 let confettiStarted = false;
 let publishQueued = false;
@@ -66,6 +64,7 @@ if (mode === "follow") {
   restartBtn.style.display = "none";
 }
 
+// --- Publish functions for Ably ---
 function publish(name, data) {
   if (mode === "master" && channel) {
     channel.publish(name, data);
@@ -74,29 +73,15 @@ function publish(name, data) {
 
 function publishState() {
   if (mode !== "master" || !channel || state.phase === "idle") return;
-
-  const payload = {
-    phase: state.phase,
-    score: state.score,
-    time: state.time,
-    currentIndex: state.currentIndex,
-    dragging: state.dragging,
-    x: state.x,
-    y: state.y,
-    startTimeMs: state.startTimeMs,
-    flashUntil: state.flashUntil
-  };
-
+  const payload = { ...state };
   const serial = JSON.stringify(payload);
   if (serial === lastPublishedState) return;
-
   lastPublishedState = serial;
   publish("state", payload);
 }
 
 function schedulePublish() {
   if (mode !== "master" || publishQueued) return;
-
   publishQueued = true;
   requestAnimationFrame(() => {
     publishQueued = false;
@@ -106,7 +91,6 @@ function schedulePublish() {
 
 function subscribe() {
   if (mode !== "follow" || !channel) return;
-
   channel.subscribe(msg => {
     const { name, data } = msg;
     if (name === "gameStart") applyGameStart(data);
@@ -114,22 +98,20 @@ function subscribe() {
   });
 }
 
+// --- Shuffle function ---
 function shuffleNoRepeat(arr) {
-  let valid = false;
-  let result = [];
+  let valid = false, result = [];
   while (!valid) {
     result = [...arr].sort(() => Math.random() - 0.5);
     valid = true;
     for (let i = 1; i < result.length; i++) {
-      if (result[i].type === result[i - 1].type) {
-        valid = false;
-        break;
-      }
+      if (result[i].type === result[i-1].type) { valid = false; break; }
     }
   }
   return result;
 }
 
+// --- Game start ---
 function startGame(publishEvent = true, incomingData = null) {
   if (mode === "master") {
     itemsData = shuffleNoRepeat(itemsDataOriginal);
@@ -139,7 +121,6 @@ function startGame(publishEvent = true, incomingData = null) {
     itemsData = incomingData.itemsData;
     state.startTimeMs = incomingData.startTimeMs;
   }
-
   state.phase = "playing";
   state.score = 0;
   state.time = GAME_DURATION;
@@ -153,7 +134,6 @@ function startGame(publishEvent = true, incomingData = null) {
   dragOffset = { x: 0, y: 0 };
   currentRenderedIndex = -1;
   currentImgEl = null;
-  sizeLockedThisDrag = false;
 
   scoreDisplay.innerText = "Score: 0";
   timerDisplay.innerText = String(GAME_DURATION);
@@ -182,7 +162,6 @@ function applyGameStart(data) {
   dragOffset = { x: 0, y: 0 };
   currentRenderedIndex = -1;
   currentImgEl = null;
-  sizeLockedThisDrag = false;
 
   startBtn.disabled = true;
   endScreen.classList.add("hidden");
@@ -195,30 +174,17 @@ function applyGameStart(data) {
 
 function applyStateSnapshot(snapshot) {
   if (!snapshot) return;
-
-  state.phase = snapshot.phase;
-  state.score = snapshot.score;
-  state.time = snapshot.time;
-  state.currentIndex = snapshot.currentIndex;
-  state.dragging = snapshot.dragging;
-  state.x = snapshot.x;
-  state.y = snapshot.y;
-  state.startTimeMs = snapshot.startTimeMs;
-  state.flashUntil = snapshot.flashUntil || 0;
-
+  Object.assign(state, snapshot);
   renderState();
 }
 
+// --- Render item ---
 function createCurrentItem() {
   container.innerHTML = "";
   currentRenderedIndex = state.currentIndex;
-  sizeLockedThisDrag = false;
 
   const item = itemsData[state.currentIndex];
-  if (!item) {
-    currentImgEl = null;
-    return;
-  }
+  if (!item) { currentImgEl = null; return; }
 
   const img = document.createElement("img");
   img.src = item.img;
@@ -240,105 +206,82 @@ function createCurrentItem() {
 
 function updateClock() {
   if (state.phase !== "playing" || !state.startTimeMs) return;
-  const elapsed = Math.floor((Date.now() - state.startTimeMs) / 1000);
+  const elapsed = Math.floor((Date.now() - state.startTimeMs)/1000);
   state.time = Math.max(0, GAME_DURATION - elapsed);
-  if (mode === "master" && state.time <= 0 && state.phase === "playing") endGame("lose");
+  if (mode === "master" && state.time <= 0) endGame("lose");
 }
 
 function renderState() {
-  if (state.phase === "playing") {
-    timerDisplay.innerText = String(state.time);
-    scoreDisplay.innerText = "Score: " + state.score;
+  timerDisplay.innerText = String(state.time);
+  scoreDisplay.innerText = "Score: " + state.score;
 
+  if (state.phase === "playing") {
     if (currentRenderedIndex !== state.currentIndex || !currentImgEl) createCurrentItem();
 
     if (currentImgEl) {
-      if (state.dragging) {
-        currentImgEl.style.transform = `translate(${state.x}px, ${state.y}px)`;
-      } else {
-        currentImgEl.style.transform = "translate(-50%, -50%)";
-      }
+      currentImgEl.style.position = state.dragging ? "fixed" : "absolute";
+      currentImgEl.style.left = state.dragging ? state.x + "px" : "50%";
+      currentImgEl.style.top = state.dragging ? state.y + "px" : "50%";
+      currentImgEl.style.transform = state.dragging ? "none" : "translate(-50%, -50%)";
     }
 
-    updateFlashOverlay();
-
-    if (state.flashUntil && Date.now() >= state.flashUntil) {
-      state.flashUntil = 0;
-      updateFlashOverlay();
-    }
+    if (state.flashUntil && Date.now() >= state.flashUntil) state.flashUntil = 0;
   } else if (state.phase === "win" || state.phase === "lose") {
     container.innerHTML = "";
     currentImgEl = null;
     currentRenderedIndex = -1;
-    sizeLockedThisDrag = false;
-
     timerDisplay.innerText = String(state.time);
     scoreDisplay.innerText = "Score: " + state.score;
     endText.innerText = state.phase === "win" ? "YOU WIN" : "YOU LOSE";
     endScreen.classList.remove("hidden");
-
     if (state.phase === "win") startConfetti();
     else stopConfetti();
-
-    updateFlashOverlay();
-  } else {
-    timerDisplay.innerText = String(state.time);
-    scoreDisplay.innerText = "Score: " + state.score;
-    updateFlashOverlay();
   }
-}
 
-function updateFlashOverlay() {
   flash.style.opacity = (state.flashUntil && Date.now() < state.flashUntil) ? 0.6 : 0;
 }
 
+// --- Dragging ---
 function startDrag(e) {
   if (state.phase !== "playing") return;
-
   draggingItem = e.target;
   const rect = draggingItem.getBoundingClientRect();
   dragOffset.x = e.clientX - rect.left;
   dragOffset.y = e.clientY - rect.top;
-
   state.dragging = true;
-  state.x = e.clientX - dragOffset.x;
-  state.y = e.clientY - dragOffset.y;
+  state.x = rect.left;
+  state.y = rect.top;
 
-  schedulePublish();
   window.addEventListener("mousemove", drag);
   window.addEventListener("mouseup", drop);
 }
 
 function drag(e) {
-  if (!draggingItem || state.phase !== "playing") return;
+  if (!draggingItem) return;
   state.x = e.clientX - dragOffset.x;
   state.y = e.clientY - dragOffset.y;
-  currentImgEl.style.transform = `translate(${state.x}px, ${state.y}px)`;
+  draggingItem.style.left = state.x + "px";
+  draggingItem.style.top = state.y + "px";
   schedulePublish();
 }
 
 function drop(e) {
-  if (!draggingItem || state.phase !== "playing") return;
+  if (!draggingItem) return;
 
   let hitBin = null;
   bins.forEach(bin => {
     const rect = bin.getBoundingClientRect();
-    if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) hitBin = bin;
+    if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom)
+      hitBin = bin;
   });
 
   const correct = hitBin && hitBin.dataset.type === draggingItem.dataset.type;
-
-  if (correct) {
-    state.score += 1;
-    state.currentIndex += 1;
-  } else if (hitBin) {
-    state.flashUntil = Date.now() + 1000;
-  }
+  if (correct) state.score++, state.currentIndex++;
+  else if (hitBin) state.flashUntil = Date.now() + 1000;
 
   state.dragging = false;
   state.x = 0;
   state.y = 0;
-  currentImgEl.style.transform = "translate(-50%, -50%)";
 
   renderState();
   publishState();
@@ -350,6 +293,7 @@ function drop(e) {
   draggingItem = null;
 }
 
+// --- Game end ---
 function endGame(result) {
   state.phase = result;
   state.dragging = false;
@@ -358,26 +302,26 @@ function endGame(result) {
   state.flashUntil = 0;
   renderState();
   publishState();
-  if (result === "win") startConfetti();
-  else stopConfetti();
+  if (result === "win") startConfetti(); else stopConfetti();
 }
 
+// --- Confetti ---
 function startConfetti() {
   if (confettiStarted) return;
   confettiStarted = true;
-  const colors = ["#ff4d4d", "#4dff88", "#4da6ff", "#ffff66", "#ff66ff"];
+  const colors = ["#ff4d4d","#4dff88","#4da6ff","#ffff66","#ff66ff"];
   confettiInterval = setInterval(() => {
-    for (let i = 0; i < 10; i++) {
+    for (let i=0;i<10;i++){
       const c = document.createElement("div");
       c.className = "confetti";
-      c.style.left = Math.random() * 100 + "vw";
-      c.style.background = colors[Math.floor(Math.random() * colors.length)];
-      c.style.animationDuration = (2 + Math.random() * 2) + "s";
+      c.style.left = Math.random()*100+"vw";
+      c.style.background = colors[Math.floor(Math.random()*colors.length)];
+      c.style.animationDuration = (2+Math.random()*2)+"s";
       confettiContainer.appendChild(c);
-      setTimeout(() => c.remove(), 3000);
+      setTimeout(()=>c.remove(),3000);
     }
-  }, 200);
-  setTimeout(stopConfetti, 15000);
+  },200);
+  setTimeout(stopConfetti,15000);
 }
 
 function stopConfetti() {
@@ -386,20 +330,16 @@ function stopConfetti() {
   confettiContainer.innerHTML = "";
 }
 
+// --- Game loop ---
 function startLoop() {
   if (loopStarted) return;
   loopStarted = true;
-  const loop = () => {
-    updateClock();
-    renderState();
-    if (mode === "master") publishState();
-    requestAnimationFrame(loop);
-  };
+  const loop = () => { updateClock(); renderState(); if (mode==="master") publishState(); requestAnimationFrame(loop); };
   requestAnimationFrame(loop);
 }
 
-startBtn.addEventListener("click", () => { if (mode === "master") startGame(true); });
-restartBtn.addEventListener("click", () => { if (mode === "master") { stopConfetti(); startGame(true); } });
+startBtn.addEventListener("click", ()=>{ if(mode==="master") startGame(true); });
+restartBtn.addEventListener("click", ()=>{ if(mode==="master"){stopConfetti();startGame(true);} });
 
 subscribe();
 startLoop();
