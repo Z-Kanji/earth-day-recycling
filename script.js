@@ -2,10 +2,6 @@ const urlParams = new URLSearchParams(window.location.search);
 const ablyKey = urlParams.get("ablyKey");
 const mode = urlParams.get("mode");
 
-if (mode === "follow") {
-  document.body.classList.add("follow-mode");
-}
-
 let ably, channel;
 
 if (ablyKey) {
