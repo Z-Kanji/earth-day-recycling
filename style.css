@@ -181,8 +181,7 @@ img {
   100% { transform: translateX(0) scale(1); }
 }
 
-body.follow-mode {
+body {
   transform: scale(0.75);
   transform-origin: top center;
-  width: 100%;
 }
