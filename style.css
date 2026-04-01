@@ -13,16 +13,15 @@ img {
 }
 
 #game-shell {
-  width: 75%;
-  max-width: 1000px;
+  height: 56vh; /* 75% of previous 75vh -> approx 25% smaller */
+  width: 56%;   /* 75% of previous 75% -> approx 25% smaller */
+  max-width: 750px;
   margin: 0 auto;
   box-sizing: border-box;
   padding: 10px 16px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 75vh;
 }
 
 #flash {
@@ -57,16 +56,12 @@ img {
 }
 
 @keyframes fall {
-  0% {
-    transform: translateY(-10vh) rotate(0deg);
-  }
-  100% {
-    transform: translateY(110vh) rotate(360deg);
-  }
+  0% { transform: translateY(-10vh) rotate(0deg); }
+  100% { transform: translateY(110vh) rotate(360deg); }
 }
 
 #timer {
-  font-size: clamp(44px, 5vh, 60px);
+  font-size: clamp(32px, 4vh, 45px);
   margin: 0 0 6px 0;
   flex: 0 0 auto;
 }
@@ -78,7 +73,7 @@ img {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  min-height: 200px;
+  min-height: 150px;
   position: relative;
 }
 
@@ -107,14 +102,14 @@ img {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: 60px;
+  gap: 45px; /* reduced to match smaller size */
   margin: 10px 0 0 0;
   padding: 0;
 }
 
 .bin {
   width: auto;
-  height: 600px;
+  height: 450px; /* scaled down */
   transform-origin: center center;
   cursor: pointer;
   transition: transform 0.2s;
@@ -123,26 +118,21 @@ img {
   position: relative;
 }
 
-.bin.correct {
-  transform: scale(1.08);
-}
-
-.bin.wrong {
-  animation: shake 0.3s;
-}
+.bin.correct { transform: scale(1.08); }
+.bin.wrong { animation: shake 0.3s; }
 
 #startBtn {
   flex: 0 0 auto;
   margin-top: 6px;
   padding: 10px 20px;
-  font-size: clamp(16px, 2.1vh, 20px);
+  font-size: clamp(14px, 2vh, 18px);
   cursor: pointer;
 }
 
 #score {
   flex: 0 0 auto;
   margin-top: 8px;
-  font-size: clamp(20px, 2.4vh, 26px);
+  font-size: clamp(16px, 2vh, 20px);
 }
 
 #endScreen {
@@ -151,7 +141,7 @@ img {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0,0,0,0.9);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -159,18 +149,16 @@ img {
   z-index: 1000;
 }
 
-#endScreen.hidden {
-  display: none;
-}
+#endScreen.hidden { display: none; }
 
 #endScreen h1 {
-  font-size: 50px;
+  font-size: 40px;
   margin: 0 0 20px 0;
 }
 
 #restartBtn {
   padding: 10px 20px;
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
 }
 
