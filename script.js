@@ -28,7 +28,7 @@ const itemsDataOriginal = [
 
 let itemsData = [];
 let state = {
-  phase: "idle",       // idle | playing | win | lose
+  phase: "idle",
   score: 0,
   time: GAME_DURATION,
   currentIndex: 0,
@@ -51,11 +51,10 @@ const restartBtn = document.getElementById("restartBtn");
 const confettiContainer = document.getElementById("confetti-container");
 
 let draggingItem = null;
-let offsetX = 0;
-let offsetY = 0;
-
+let dragOffset = { x: 0, y: 0 };
 let currentRenderedIndex = -1;
 let currentImgEl = null;
+let sizeLockedThisDrag = false;
 let confettiInterval = null;
 let confettiStarted = false;
 let publishQueued = false;
@@ -110,23 +109,17 @@ function subscribe() {
 
   channel.subscribe(msg => {
     const { name, data } = msg;
-
-    if (name === "gameStart") {
-      applyGameStart(data);
-    } else if (name === "state") {
-      applyStateSnapshot(data);
-    }
+    if (name === "gameStart") applyGameStart(data);
+    else if (name === "state") applyStateSnapshot(data);
   });
 }
 
 function shuffleNoRepeat(arr) {
   let valid = false;
   let result = [];
-
   while (!valid) {
     result = [...arr].sort(() => Math.random() - 0.5);
     valid = true;
-
     for (let i = 1; i < result.length; i++) {
       if (result[i].type === result[i - 1].type) {
         valid = false;
@@ -134,7 +127,6 @@ function shuffleNoRepeat(arr) {
       }
     }
   }
-
   return result;
 }
 
@@ -142,11 +134,7 @@ function startGame(publishEvent = true, incomingData = null) {
   if (mode === "master") {
     itemsData = shuffleNoRepeat(itemsDataOriginal);
     state.startTimeMs = Date.now();
-
-    publish("gameStart", {
-      itemsData,
-      startTimeMs: state.startTimeMs
-    });
+    publish("gameStart", { itemsData, startTimeMs: state.startTimeMs });
   } else {
     itemsData = incomingData.itemsData;
     state.startTimeMs = incomingData.startTimeMs;
@@ -162,11 +150,10 @@ function startGame(publishEvent = true, incomingData = null) {
   state.flashUntil = 0;
 
   draggingItem = null;
-  offsetX = 0;
-  offsetY = 0;
-
+  dragOffset = { x: 0, y: 0 };
   currentRenderedIndex = -1;
   currentImgEl = null;
+  sizeLockedThisDrag = false;
 
   scoreDisplay.innerText = "Score: 0";
   timerDisplay.innerText = String(GAME_DURATION);
@@ -192,11 +179,10 @@ function applyGameStart(data) {
   state.flashUntil = 0;
 
   draggingItem = null;
-  offsetX = 0;
-  offsetY = 0;
-
+  dragOffset = { x: 0, y: 0 };
   currentRenderedIndex = -1;
   currentImgEl = null;
+  sizeLockedThisDrag = false;
 
   startBtn.disabled = true;
   endScreen.classList.add("hidden");
@@ -226,6 +212,7 @@ function applyStateSnapshot(snapshot) {
 function createCurrentItem() {
   container.innerHTML = "";
   currentRenderedIndex = state.currentIndex;
+  sizeLockedThisDrag = false;
 
   const item = itemsData[state.currentIndex];
   if (!item) {
@@ -236,24 +223,16 @@ function createCurrentItem() {
   const img = document.createElement("img");
   img.src = item.img;
   img.dataset.type = item.type;
-  img.draggable = false;
-
-  img.addEventListener("dragstart", e => {
-    e.preventDefault();
-  });
-
   img.style.position = "absolute";
   img.style.top = "50%";
   img.style.left = "50%";
   img.style.transform = "translate(-50%, -50%)";
   img.style.zIndex = "1000";
-  img.style.willChange = "transform, left, top";
   img.style.pointerEvents = "auto";
-  img.style.cursor = "grab";
+  img.style.userSelect = "none";
+  img.style.webkitUserDrag = "none";
 
-  if (mode === "master") {
-    img.addEventListener("mousedown", startDrag);
-  }
+  if (mode === "master") img.addEventListener("mousedown", startDrag);
 
   container.appendChild(img);
   currentImgEl = img;
@@ -261,15 +240,9 @@ function createCurrentItem() {
 
 function updateClock() {
   if (state.phase !== "playing" || !state.startTimeMs) return;
-
   const elapsed = Math.floor((Date.now() - state.startTimeMs) / 1000);
-  const remaining = Math.max(0, GAME_DURATION - elapsed);
-
-  state.time = remaining;
-
-  if (mode === "master" && remaining <= 0 && state.phase === "playing") {
-    endGame("lose");
-  }
+  state.time = Math.max(0, GAME_DURATION - elapsed);
+  if (mode === "master" && state.time <= 0 && state.phase === "playing") endGame("lose");
 }
 
 function renderState() {
@@ -277,27 +250,13 @@ function renderState() {
     timerDisplay.innerText = String(state.time);
     scoreDisplay.innerText = "Score: " + state.score;
 
-    if (currentRenderedIndex !== state.currentIndex || !currentImgEl) {
-      createCurrentItem();
-    }
+    if (currentRenderedIndex !== state.currentIndex || !currentImgEl) createCurrentItem();
 
     if (currentImgEl) {
-      currentImgEl.style.zIndex = "1000";
-
       if (state.dragging) {
-        currentImgEl.style.position = "fixed";
-        currentImgEl.style.left = state.x + "px";
-        currentImgEl.style.top = state.y + "px";
-        currentImgEl.style.transform = "none";
-        currentImgEl.style.pointerEvents = "none";
-        currentImgEl.style.cursor = "grabbing";
+        currentImgEl.style.transform = `translate(${state.x}px, ${state.y}px)`;
       } else {
-        currentImgEl.style.position = "absolute";
-        currentImgEl.style.left = "50%";
-        currentImgEl.style.top = "50%";
         currentImgEl.style.transform = "translate(-50%, -50%)";
-        currentImgEl.style.pointerEvents = "auto";
-        currentImgEl.style.cursor = "grab";
       }
     }
 
@@ -311,17 +270,15 @@ function renderState() {
     container.innerHTML = "";
     currentImgEl = null;
     currentRenderedIndex = -1;
+    sizeLockedThisDrag = false;
 
     timerDisplay.innerText = String(state.time);
     scoreDisplay.innerText = "Score: " + state.score;
     endText.innerText = state.phase === "win" ? "YOU WIN" : "YOU LOSE";
     endScreen.classList.remove("hidden");
 
-    if (state.phase === "win") {
-      if (!confettiStarted) startConfetti();
-    } else {
-      stopConfetti();
-    }
+    if (state.phase === "win") startConfetti();
+    else stopConfetti();
 
     updateFlashOverlay();
   } else {
@@ -332,47 +289,31 @@ function renderState() {
 }
 
 function updateFlashOverlay() {
-  flash.style.opacity = state.flashUntil && Date.now() < state.flashUntil ? 0.6 : 0;
+  flash.style.opacity = (state.flashUntil && Date.now() < state.flashUntil) ? 0.6 : 0;
 }
 
 function startDrag(e) {
   if (state.phase !== "playing") return;
 
-  e.preventDefault();
-
   draggingItem = e.target;
   const rect = draggingItem.getBoundingClientRect();
-
-  offsetX = e.clientX - rect.left;
-  offsetY = e.clientY - rect.top;
-
-  draggingItem.style.position = "fixed";
-  draggingItem.style.zIndex = "1000";
-  draggingItem.style.transform = "none";
-  draggingItem.style.pointerEvents = "none";
-  draggingItem.style.cursor = "grabbing";
-  draggingItem.style.left = rect.left + "px";
-  draggingItem.style.top = rect.top + "px";
+  dragOffset.x = e.clientX - rect.left;
+  dragOffset.y = e.clientY - rect.top;
 
   state.dragging = true;
-  state.x = e.clientX - offsetX;
-  state.y = e.clientY - offsetY;
+  state.x = e.clientX - dragOffset.x;
+  state.y = e.clientY - dragOffset.y;
 
-  publishState();
-
+  schedulePublish();
   window.addEventListener("mousemove", drag);
   window.addEventListener("mouseup", drop);
 }
 
 function drag(e) {
   if (!draggingItem || state.phase !== "playing") return;
-
-  state.x = e.clientX - offsetX;
-  state.y = e.clientY - offsetY;
-
-  draggingItem.style.left = state.x + "px";
-  draggingItem.style.top = state.y + "px";
-
+  state.x = e.clientX - dragOffset.x;
+  state.y = e.clientY - dragOffset.y;
+  currentImgEl.style.transform = `translate(${state.x}px, ${state.y}px)`;
   schedulePublish();
 }
 
@@ -380,61 +321,32 @@ function drop(e) {
   if (!draggingItem || state.phase !== "playing") return;
 
   let hitBin = null;
-
   bins.forEach(bin => {
     const rect = bin.getBoundingClientRect();
-    if (
-      e.clientX >= rect.left &&
-      e.clientX <= rect.right &&
-      e.clientY >= rect.top &&
-      e.clientY <= rect.bottom
-    ) {
-      hitBin = bin;
-    }
+    if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) hitBin = bin;
   });
 
-  const correct =
-    !!hitBin && hitBin.dataset.type === draggingItem.dataset.type;
+  const correct = hitBin && hitBin.dataset.type === draggingItem.dataset.type;
 
   if (correct) {
     state.score += 1;
     state.currentIndex += 1;
-    state.dragging = false;
-    state.x = 0;
-    state.y = 0;
-    state.flashUntil = 0;
-
-    if (state.currentIndex >= itemsData.length) {
-      endGame("win");
-    } else {
-      currentRenderedIndex = -1;
-      currentImgEl = null;
-      renderState();
-      publishState();
-    }
   } else if (hitBin) {
-    state.dragging = false;
-    state.x = 0;
-    state.y = 0;
     state.flashUntil = Date.now() + 1000;
-    renderState();
-    publishState();
-  } else {
-    state.dragging = false;
-    state.x = 0;
-    state.y = 0;
-    renderState();
-    publishState();
   }
+
+  state.dragging = false;
+  state.x = 0;
+  state.y = 0;
+  currentImgEl.style.transform = "translate(-50%, -50%)";
+
+  renderState();
+  publishState();
+
+  if (state.currentIndex >= itemsData.length) endGame("win");
 
   window.removeEventListener("mousemove", drag);
   window.removeEventListener("mouseup", drop);
-
-  if (draggingItem) {
-    draggingItem.style.pointerEvents = "auto";
-    draggingItem.style.cursor = "grab";
-  }
-
   draggingItem = null;
 }
 
@@ -444,23 +356,16 @@ function endGame(result) {
   state.x = 0;
   state.y = 0;
   state.flashUntil = 0;
-
   renderState();
   publishState();
-
-  if (result === "win") {
-    startConfetti();
-  } else {
-    stopConfetti();
-  }
+  if (result === "win") startConfetti();
+  else stopConfetti();
 }
 
 function startConfetti() {
   if (confettiStarted) return;
   confettiStarted = true;
-
   const colors = ["#ff4d4d", "#4dff88", "#4da6ff", "#ffff66", "#ff66ff"];
-
   confettiInterval = setInterval(() => {
     for (let i = 0; i < 10; i++) {
       const c = document.createElement("div");
@@ -469,55 +374,32 @@ function startConfetti() {
       c.style.background = colors[Math.floor(Math.random() * colors.length)];
       c.style.animationDuration = (2 + Math.random() * 2) + "s";
       confettiContainer.appendChild(c);
-
       setTimeout(() => c.remove(), 3000);
     }
   }, 200);
-
-  setTimeout(() => {
-    stopConfetti();
-  }, 15000);
+  setTimeout(stopConfetti, 15000);
 }
 
 function stopConfetti() {
   confettiStarted = false;
-
-  if (confettiInterval) {
-    clearInterval(confettiInterval);
-    confettiInterval = null;
-  }
-
+  if (confettiInterval) clearInterval(confettiInterval);
   confettiContainer.innerHTML = "";
 }
 
 function startLoop() {
   if (loopStarted) return;
   loopStarted = true;
-
   const loop = () => {
     updateClock();
     renderState();
-
-    if (mode === "master") {
-      publishState();
-    }
-
+    if (mode === "master") publishState();
     requestAnimationFrame(loop);
   };
-
   requestAnimationFrame(loop);
 }
 
-startBtn.addEventListener("click", () => {
-  if (mode !== "master") return;
-  startGame(true);
-});
-
-restartBtn.addEventListener("click", () => {
-  if (mode !== "master") return;
-  stopConfetti();
-  startGame(true);
-});
+startBtn.addEventListener("click", () => { if (mode === "master") startGame(true); });
+restartBtn.addEventListener("click", () => { if (mode === "master") { stopConfetti(); startGame(true); } });
 
 subscribe();
 startLoop();
