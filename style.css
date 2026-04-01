@@ -180,3 +180,9 @@ img {
   75% { transform: translateX(-5px) scale(1); }
   100% { transform: translateX(0) scale(1); }
 }
+
+body.follow-mode {
+  transform: scale(0.75);
+  transform-origin: top center;
+  width: 133.33%;
+}
