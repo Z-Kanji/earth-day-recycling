@@ -2,6 +2,11 @@ const urlParams = new URLSearchParams(window.location.search);
 const ablyKey = urlParams.get("ablyKey");
 const mode = urlParams.get("mode");
 
+/* ✅ ADDED: FOLLOW SCALE HOOK */
+if (mode === "follow") {
+  document.body.classList.add("follow-mode");
+}
+
 let ably, channel;
 
 if (ablyKey) {
@@ -97,14 +102,18 @@ function publishState() {
   publish("state", payload);
 }
 
-function schedulePublish() {
-  if (mode !== "master" || publishQueued) return;
+/* ✅ REPLACED: THROTTLED VERSION */
+let lastPublishTime = 0;
 
-  publishQueued = true;
-  requestAnimationFrame(() => {
-    publishQueued = false;
-    publishState();
-  });
+function schedulePublish() {
+  if (mode !== "master") return;
+
+  const now = performance.now();
+
+  if (now - lastPublishTime < 16) return;
+
+  lastPublishTime = now;
+  publishState();
 }
 
 function subscribe() {
